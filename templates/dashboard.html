@@ -245,7 +245,8 @@
             <div class="tc-name">{{ item.client.name }}</div>
             <div class="tc-bar-wrap">
               <div class="tc-bar"
-                   style="width:{{ ((item.total_billed / max_billed) * 100)|int }}%">
+                   {% set percent = (item.total_billed / max_billed * 100) if max_billed > 0 else 0 %}
+style="width:{{ percent | int }}%">
               </div>
             </div>
           </div>
