@@ -154,7 +154,7 @@ def _render(invoice, app) -> bytes:
                              S(fontSize=8, color=INK_3, leading=11)))
 
     hdr_data = [[
-        KeepTogether([logo_cell, Spacer(1, 4)] + company_lines),
+        [logo_cell, Spacer(1, 4)] + company_lines,
         Paragraph("INVOICE",
                   S(fontSize=30, fontName="Helvetica-Bold",
                     color=ACCENT, alignment=TA_RIGHT)),
@@ -223,7 +223,7 @@ def _render(invoice, app) -> bytes:
                     S(fontSize=8.5, color=INK_3, leading=12)))
 
     info_tbl = Table(
-        [[KeepTogether(bill), meta_tbl]],
+       [[bill, meta_tbl]],
         colWidths=[W * 0.52, W * 0.48],
     )
     info_tbl.setStyle(TableStyle([
