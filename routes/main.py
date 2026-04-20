@@ -24,7 +24,7 @@ def dashboard():
      # 🚨 Force setup
     profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
     if not profile:
-        return redirect(url_for("main.setup_business"))
+        return redirect(url_for("main.settings_profile"))
 
     from extensions import db
     from models import Client, Invoice, InvoiceStatus
