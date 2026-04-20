@@ -370,3 +370,23 @@ class BillItem(db.Model):
 
     def __repr__(self):
         return f"<BillItem bill_id={self.bill_id} name={self.item_name!r}>"
+
+
+class BusinessProfile(db.Model):
+    __tablename__ = "business_profiles"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    owner_id = db.Column(db.Integer, db.ForeignKey("admins.id"), nullable=False, unique=True)
+
+    business_name = db.Column(db.String(200), nullable=False)
+    owner_name = db.Column(db.String(200), nullable=True)
+    upi_id = db.Column(db.String(100), nullable=True)
+    gst_number = db.Column(db.String(50), nullable=True)
+    address = db.Column(db.Text, nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    owner = db.relationship("Admin", backref=db.backref("business_profile", uselist=False))

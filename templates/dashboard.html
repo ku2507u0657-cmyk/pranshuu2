@@ -385,9 +385,10 @@ new Chart(revenueCtx, {
         padding:         12,
         cornerRadius:    8,
         callbacks: {
-          label: ctx =>
-            ` ₹{ctx.dataset.label}: $₹{ctx.parsed.y.toLocaleString('en-US', {
-              minimumFractionDigits: 2, maximumFractionDigits: 2,
+          label: (ctx) => 
+            `${ctx.dataset.label}: ₹${ctx.parsed.y.toLocaleString('en-IN', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
             })}`,
         },
       },
@@ -443,10 +444,11 @@ new Chart(splitCtx, {
         padding:         12,
         cornerRadius:    8,
         callbacks: {
-          label: ctx =>
-            ` $₹{ctx.parsed.toLocaleString('en-US', {
-              minimumFractionDigits: 2, maximumFractionDigits: 2,
-            })}`,
+          label: (ctx) => 
+             `${ctx.label}: ₹${ctx.parsed.toLocaleString('en-IN', {
+             minimumFractionDigits: 2,
+             maximumFractionDigits: 2,
+          })}`,
         },
       },
     },

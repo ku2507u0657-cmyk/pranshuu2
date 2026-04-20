@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, current_app
 from flask_login import login_required, current_user, current_user
+from models import BusinessProfile
 
 main_bp = Blueprint("main", __name__)
 
@@ -18,7 +19,13 @@ def index():
 
 @main_bp.route("/dashboard")
 @login_required
-def dashboard():
+def dashboard(): 
+
+     # 🚨 Force setup
+    profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
+    if not profile:
+        return redirect(url_for("main.setup_business"))
+
     from extensions import db
     from models import Client, Invoice, InvoiceStatus
 
@@ -134,3 +141,29 @@ def health():
         db_status = f"error: {exc}"
     return {"status": "ok", "database": db_status,
             "app": current_app.config.get("APP_NAME")}
+
+
+@main_bp.route("/setup-business", methods=["GET", "POST"])
+@login_required
+def setup_business():
+    profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
+
+    if request.method == "POST":
+
+        if not profile:
+            profile = BusinessProfile(owner_id=current_user.id)
+
+        profile.business_name = request.form.get("business_name")
+        profile.owner_name = request.form.get("owner_name")
+        profile.upi_id = request.form.get("upi_id")
+        profile.gst_number = request.form.get("gst_number")
+        profile.address = request.form.get("address")
+        profile.phone = request.form.get("phone")
+        profile.email = request.form.get("email")
+
+        db.session.add(profile)
+        db.session.commit()
+
+        return redirect(url_for("main.dashboard"))
+
+    return render_template("setup_business.html", profile=profile)
