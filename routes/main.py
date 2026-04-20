@@ -143,9 +143,9 @@ def health():
             "app": current_app.config.get("APP_NAME")}
 
 
-@main_bp.route("/setup-business", methods=["GET", "POST"])
+@main_bp.route("/settings/profile", methods=["GET", "POST"])
 @login_required
-def setup_business():
+def settings_profile():
     profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
 
     if request.method == "POST":
