@@ -143,7 +143,7 @@ def create_bill(client_id=None):
 
         bill = Bill(
             owner_id    = current_user.id,
-            bill_number = Bill.next_bill_number(owner_id=current_user.id),
+            bill_number = Bill.next_bill_number(current_user.id),
             client_id   = int(cid),
             notes       = notes or None,
             status      = BillStatus.UNPAID,

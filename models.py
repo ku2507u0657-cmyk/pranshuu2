@@ -246,7 +246,7 @@ class Bill(db.Model):
     id          = db.Column(db.Integer,        primary_key=True)
     owner_id    = db.Column(db.Integer,        db.ForeignKey("admins.id"),
                              nullable=False, index=True)            # multi-user FK
-    bill_number = db.Column(db.String(20),     unique=True, nullable=False, index=True)
+    bill_number = db.Column(db.String(20), nullable=False, index=True)
     client_id   = db.Column(db.Integer,        db.ForeignKey("clients.id"),
                              nullable=False, index=True)
     subtotal    = db.Column(db.Numeric(12, 2), nullable=False, default=0)
@@ -264,19 +264,24 @@ class Bill(db.Model):
     owner = db.relationship("Admin", backref=db.backref("bills", lazy="dynamic"))
     items = db.relationship("BillItem", back_populates="bill",
                              cascade="all, delete-orphan", order_by="BillItem.id")
+    __table_args__ = (
+    db.UniqueConstraint('owner_id', 'bill_number', name='unique_user_bill'),
+)
 
     @classmethod
-    def next_bill_number(cls, owner_id=None):
-        q = cls.query
-        if owner_id:
-            q = q.filter_by(owner_id=owner_id)
+    def next_bill_number(cls, owner_id):
+        q = cls.query.filter_by(owner_id=owner_id)
+
         last = q.order_by(cls.id.desc()).with_entities(cls.bill_number).first()
+
         if last is None:
-            return "BILL-0001"
+           return "BILL-0001"
+
         try:
             seq = int(last[0].split("-")[1]) + 1
         except (IndexError, ValueError):
-            seq = cls.query.count() + 1
+            seq = q.count() + 1
+
         return f"BILL-{seq:04d}"
 
     def recalculate_totals(self):
