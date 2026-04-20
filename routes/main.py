@@ -4,8 +4,8 @@ routes/main.py — Dashboard with multi-user scoped stats.
 import json
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, render_template, current_app
-from flask_login import login_required, current_user, current_user
+from flask import Blueprint, render_template, current_app, request, redirect, url_for
+from flask_login import login_required, current_user
 from models import BusinessProfile
 
 main_bp = Blueprint("main", __name__)
