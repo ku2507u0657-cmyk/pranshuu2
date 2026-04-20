@@ -5,79 +5,110 @@
 <div class="container-fluid px-4">
 
   <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h2 class="fw-bold">Settings</h2>
-      <p class="text-muted mb-0">Manage your business profile</p>
-    </div>
-
-    <button form="profileForm" class="btn btn-dark px-4">
-     <i class="bi bi-check"></i> Save Changes
-    </button>
+  <div class="mb-4">
+    <h2 class="fw-bold">Settings</h2>
+    <p class="text-muted">Manage your business profile</p>
   </div>
 
-  <!-- Card -->
-  <div class="card p-4 shadow-sm" style="max-width:800px;">
+  <div class="row g-4">
 
-    <h5 class="mb-4">Business Profile</h5>
+    <!-- LEFT SIDE (PROFILE CARD) -->
+    <div class="col-md-4">
+      <div class="card p-4 shadow-sm text-center">
 
-    <form method="POST" id="profileForm">
-
-      <div class="row">
-
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Business Name</label>
-          <input class="form-control"
-                 name="business_name"
-                 value="{{ profile.business_name if profile else '' }}"
-                 required>
+        <div class="mb-3">
+          <div style="
+            width:80px;
+            height:80px;
+            border-radius:50%;
+            background:#111;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:28px;
+            margin:auto;
+          ">
+            {{ profile.business_name[0] if profile else 'B' }}
+          </div>
         </div>
 
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Owner Name</label>
-          <input class="form-control"
-                 name="owner_name"
-                 value="{{ profile.owner_name if profile else '' }}">
-        </div>
+        <h5 class="mb-1">{{ profile.business_name }}</h5>
+        <p class="text-muted small mb-3">{{ profile.owner_name }}</p>
 
-        <div class="col-md-6 mb-3">
-          <label class="form-label">UPI ID</label>
-          <input class="form-control"
-                 name="upi_id"
-                 value="{{ profile.upi_id if profile else '' }}">
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label class="form-label">GST Number</label>
-          <input class="form-control"
-                 name="gst_number"
-                 value="{{ profile.gst_number if profile else '' }}">
-        </div>
-
-        <div class="col-md-12 mb-3">
-          <label class="form-label">Address</label>
-          <textarea class="form-control" name="address">
-{{ profile.address if profile else '' }}
-          </textarea>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Phone</label>
-          <input class="form-control"
-                 name="phone"
-                 value="{{ profile.phone if profile else '' }}">
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Email</label>
-          <input class="form-control"
-                 name="email"
-                 value="{{ profile.email if profile else '' }}">
+        <div class="text-start small">
+          <p><strong>📞</strong> {{ profile.phone }}</p>
+          <p><strong>✉️</strong> {{ profile.email }}</p>
+          <p><strong>💳</strong> {{ profile.upi_id }}</p>
         </div>
 
       </div>
+    </div>
 
-    </form>
+    <!-- RIGHT SIDE (FORM) -->
+    <div class="col-md-8">
+      <div class="card p-4 shadow-sm">
+
+        <div class="d-flex justify-content-between mb-3">
+          <h5>Business Details</h5>
+          <button form="profileForm" class="btn btn-dark">
+            Save
+          </button>
+        </div>
+
+        <form method="POST" id="profileForm">
+
+          <div class="row">
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Business Name</label>
+              <input class="form-control" name="business_name"
+                value="{{ profile.business_name if profile else '' }}">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Owner Name</label>
+              <input class="form-control" name="owner_name"
+                value="{{ profile.owner_name if profile else '' }}">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">UPI ID</label>
+              <input class="form-control" name="upi_id"
+                value="{{ profile.upi_id if profile else '' }}">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">GST Number</label>
+              <input class="form-control" name="gst_number"
+                value="{{ profile.gst_number if profile else '' }}">
+            </div>
+
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Address</label>
+              <textarea class="form-control" name="address">
+{{ profile.address if profile else '' }}
+              </textarea>
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Phone</label>
+              <input class="form-control" name="phone"
+                value="{{ profile.phone if profile else '' }}">
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Email</label>
+              <input class="form-control" name="email"
+                value="{{ profile.email if profile else '' }}">
+            </div>
+
+          </div>
+
+        </form>
+
+      </div>
+    </div>
 
   </div>
 
