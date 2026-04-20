@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, current_app, request, redirect, url_for
 from flask_login import login_required, current_user
 from models import BusinessProfile
+from extensions import db
 
 main_bp = Blueprint("main", __name__)
 
