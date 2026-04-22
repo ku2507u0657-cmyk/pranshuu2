@@ -2,169 +2,289 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ app_name }} — Invoice Automation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>{{ app_name }} — Professional Invoice Automation</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet" />
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}" />
-</head>
-<body class="home-body">
 
-  <!-- ── Navbar ──────────────────────────────────────────── -->
-  <nav class="home-nav">
-    <div class="home-nav-brand">
-      <span class="brand-icon">⬡</span>
-      {{ app_name }}
-    </div>
-    <div class="home-nav-links">
-      <a href="#features">Features</a>
-      <a href="#how" >How it works</a>
-      <a href="{{ url_for('main.dashboard') }}" class="nav-cta">Launch App →</a>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1D4ED8; /* Your Blue */
+      --ink: #1A1714;     /* Your Ink Base */
+      --ink-muted: #8A8480;
+      --bg: #F9F8F7;
+      --success: #16A34A;
+      --warning: #D97706;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4, h5 { font-family: 'Syne', sans-serif; letter-spacing: -0.03em; }
+
+    /* Glass Navbar */
+    .glass-nav {
+      background: rgba(249, 248, 247, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      padding: 15px 0;
+      transition: all 0.3s ease;
+    }
+
+    /* Buttons */
+    .btn-premium {
+      background-color: var(--ink);
+      color: white;
+      border-radius: 50px;
+      padding: 12px 32px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-premium:hover {
+      background-color: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(29, 78, 216, 0.2);
+    }
+
+    .btn-outline-premium {
+      background-color: transparent;
+      color: var(--ink);
+      border: 1px solid rgba(26, 23, 20, 0.2);
+      border-radius: 50px;
+      padding: 12px 32px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+    .btn-outline-premium:hover { background-color: rgba(0,0,0,0.03); color: var(--ink); }
+
+    /* Hero Section */
+    .hero-section {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 80px;
+      position: relative;
+    }
+    .hero-title { font-size: clamp(3rem, 6vw, 5.5rem); font-weight: 800; line-height: 1.05; margin-bottom: 24px; }
+    .hero-title span { color: var(--primary); }
+
+    /* 3D Floating Cards */
+    .visual-container { position: relative; height: 500px; perspective: 1000px; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0,0,0,0.05);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      position: absolute;
+      width: 100%;
+      max-width: 320px;
+    }
+    .card-1 { top: 10%; right: 5%; z-index: 2; border-top: 4px solid var(--success); }
+    .card-2 { bottom: 10%; left: 5%; z-index: 1; border-top: 4px solid var(--warning); }
+
+    /* Sections */
+    .section-padding { padding: 100px 0; }
+    
+    .stats-card {
+      background: white; border-radius: 24px; padding: 40px;
+      border: 1px solid rgba(0,0,0,0.04); transition: all 0.4s ease;
+    }
+    .stats-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.05); }
+
+    .feature-box {
+      background: white; border-radius: 24px; padding: 40px 30px; height: 100%;
+      border: 1px solid rgba(0,0,0,0.04); transition: all 0.4s ease;
+    }
+    .feature-box:hover { box-shadow: 0 15px 30px rgba(0,0,0,0.05); transform: translateY(-5px); }
+    .feature-icon-wrapper {
+      width: 60px; height: 60px; border-radius: 16px;
+      background: rgba(29, 78, 216, 0.1); color: var(--primary);
+      display: flex; align-items: center; justify-content: center; font-size: 24px; margin-bottom: 24px;
+    }
+
+    .step-number { font-family: 'Syne', sans-serif; font-size: 3.5rem; font-weight: 800; color: rgba(29, 78, 216, 0.15); line-height: 1; margin-bottom: 15px; }
+     
+    .hero-glow {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80vw;
+      height: 50vh;
+      background: radial-gradient(circle, rgba(29, 78, 216, 0.15) 0%, rgba(249, 248, 247, 0) 70%);
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg fixed-top glass-nav">
+    <div class="container">
+      <a class="navbar-brand fw-bold fs-4 d-flex align-items-center gap-2 text-dark" href="#">
+        <span style="color: var(--primary);">⬡</span> {{ app_name }}
+      </a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <i class="bi bi-list fs-2"></i>
+      </button>
+      <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+        <ul class="navbar-nav align-items-center gap-4 mt-3 mt-lg-0">
+          <li class="nav-item"><a class="nav-link text-dark fw-medium" href="#problem">Why Us</a></li>
+          <li class="nav-item"><a class="nav-link text-dark fw-medium" href="#features">Features</a></li>
+          <li class="nav-item"><a class="nav-link text-dark fw-medium" href="#how">How it works</a></li>
+          <li class="nav-item">
+            <a href="{{ url_for('main.dashboard') }}" class="btn-premium w-100 mt-2 mt-lg-0">Launch App <i class="bi bi-arrow-right"></i></a>
+          </li>
+        </ul>
+      </div>
     </div>
   </nav>
 
-  <!-- ── Hero ────────────────────────────────────────────── -->
   <section class="hero-section">
-    <div class="hero-bg-grid"></div>
     <div class="hero-glow"></div>
+    
+    <div class="container">
+      <div class="row align-items-center h-100">
+        
+        <div class="col-12 col-lg-6 mb-5 mb-lg-0 gs-hero">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill bg-white border mb-4 shadow-sm" style="font-size: 0.85rem; font-weight: 600; color: var(--ink-muted);">
+            <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
+            Professional Automation Platform
+          </div>
+          <h1 class="hero-title">Invoicing that<br/><span>runs itself.</span></h1>
+          <p class="fs-5 text-secondary mb-5 max-w-md">
+            Generate, send, and track invoices in seconds. Built for freelancers and small teams who'd rather focus on the actual work.
+          </p>
+          <div class="d-flex flex-column flex-sm-row gap-3">
+            <a href="{{ url_for('main.dashboard') }}" class="btn-premium justify-content-center">Open Dashboard</a>
+            <a href="#features" class="btn-outline-premium text-center">Explore features</a>
+          </div>
+        </div>
 
-    <div class="hero-content">
-      <div class="hero-eyebrow">
-        <span class="dot"></span>
-        Invoice Automation Platform
+        <div class="col-12 col-lg-6 d-none d-md-block">
+          <div class="visual-container">
+            <div class="glass-card card-1">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">Paid</span>
+                <span class="text-muted small fw-bold">#0042</span>
+              </div>
+              <h3 class="fw-bold mb-1">₹4,200.00</h3>
+              <p class="text-muted small mb-3">Acme Corp · Due Jan 31</p>
+            </div>
+            <div class="glass-card card-2">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-2">Pending</span>
+                <span class="text-muted small fw-bold">#0043</span>
+              </div>
+              <h3 class="fw-bold mb-1">₹1,850.00</h3>
+              <p class="text-muted small mb-3">Globex LLC · Due Feb 15</p>
+            </div>
+          </div>
+        </div>
+
       </div>
-      <h1 class="hero-headline">
-        Invoicing that<br/>
-        <em>runs itself.</em>
-      </h1>
-      <p class="hero-sub">
-        Generate, send, and track invoices in seconds.<br/>
-        Built for freelancers and small teams who'd rather do their work.
+    </div>
+  </section>
+
+  <section id="problem" class="section-padding bg-white text-center">
+    <div class="container gs-scroll">
+      <h2 class="display-4 fw-bold mb-4">Stop wasting hours on manual admin.</h2>
+      <p class="fs-4 text-secondary mx-auto" style="max-width: 800px;">
+        If you are still using Excel sheets or manual Word templates, you are losing money in efficiency every single day. InvoiceFlow gives you your time back.
       </p>
-      <div class="hero-actions">
-        <a href="{{ url_for('main.dashboard') }}" class="btn-primary-hero">
-          Open Dashboard
-          <i class="bi bi-arrow-right"></i>
-        </a>
-        <a href="#features" class="btn-ghost-hero">See features</a>
-      </div>
     </div>
+  </section>
 
-    <!-- Floating card decoration -->
-    <div class="hero-card-float">
-      <div class="float-card">
-        <div class="float-card-header">
-          <span class="fc-dot green"></span>
-          <span class="fc-label">Invoice #0042</span>
-          <span class="fc-status paid">Paid</span>
-        </div>
-        <div class="float-card-amount">₹4,200.00</div>
-        <div class="float-card-meta">Acme Corp · Due Jan 31</div>
-        <div class="float-card-bar">
-          <div class="float-card-bar-fill" style="width:100%"></div>
-        </div>
-      </div>
-      <div class="float-card float-card-2">
-        <div class="float-card-header">
-          <span class="fc-dot amber"></span>
-          <span class="fc-label">Invoice #0043</span>
-          <span class="fc-status pending">Pending</span>
-        </div>
-        <div class="float-card-amount">₹1,850.00</div>
-        <div class="float-card-meta">Globex LLC · Due Feb 15</div>
-        <div class="float-card-bar">
-          <div class="float-card-bar-fill" style="width:55%"></div>
-        </div>
+  <section class="py-5 bg-light">
+    <div class="container">
+      <div class="row g-4 text-center gs-scroll-stagger">
+        <div class="col-md-4"><div class="stats-card"><h3 class="display-4 fw-bold" style="color:var(--primary)">500+</h3><p class="text-secondary fw-medium m-0">Invoices Processed</p></div></div>
+        <div class="col-md-4"><div class="stats-card"><h3 class="display-4 fw-bold" style="color:var(--primary)">100+</h3><p class="text-secondary fw-medium m-0">Happy Businesses</p></div></div>
+        <div class="col-md-4"><div class="stats-card"><h3 class="display-4 fw-bold" style="color:var(--primary)">0%</h3><p class="text-secondary fw-medium m-0">Manual Errors</p></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ── Features ────────────────────────────────────────── -->
-  <section class="features-section" id="features">
-    <div class="section-label">What's inside</div>
-    <h2 class="section-heading">Everything you need,<br/>nothing you don't.</h2>
-
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-lightning-charge-fill"></i></div>
-        <h3>Instant Invoices</h3>
-        <p>Create a professional invoice in under 30 seconds. Auto-numbered, auto-dated.</p>
+  <section id="features" class="section-padding">
+    <div class="container">
+      <div class="text-center mb-5 gs-scroll">
+        <h2 class="display-5 fw-bold mb-3">Everything you need,<br/>nothing you don't.</h2>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-people-fill"></i></div>
-        <h3>Client Management</h3>
-        <p>Store client details, history, and notes all in one clean view.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
-        <h3>Revenue Tracking</h3>
-        <p>See what's paid, what's pending, and what's overdue — at a glance.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-envelope-paper-fill"></i></div>
-        <h3>Email Delivery</h3>
-        <p>Send invoices directly from the app with a professional email template.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-filetype-pdf"></i></div>
-        <h3>PDF Export</h3>
-        <p>Download pixel-perfect PDFs ready to send or file for your records.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><i class="bi bi-shield-check-fill"></i></div>
-        <h3>Built to Scale</h3>
-        <p>Flask + SQLAlchemy foundation ready for auth, multi-tenancy, and APIs.</p>
+      <div class="row g-4 gs-scroll-stagger-2">
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-lightning-charge-fill"></i></div><h4 class="fw-bold">Instant Invoices</h4><p class="text-secondary">Create a professional invoice in under 30 seconds. Auto-numbered, auto-dated.</p></div></div>
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-people-fill"></i></div><h4 class="fw-bold">Client Management</h4><p class="text-secondary">Store client details, history, and notes all in one clean central hub.</p></div></div>
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-graph-up-arrow"></i></div><h4 class="fw-bold">Revenue Tracking</h4><p class="text-secondary">See what's paid, what's pending, and what's overdue — at a glance.</p></div></div>
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-envelope-paper-fill"></i></div><h4 class="fw-bold">Email Delivery</h4><p class="text-secondary">Send invoices directly from the app with a professional email template.</p></div></div>
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-filetype-pdf"></i></div><h4 class="fw-bold">PDF Export</h4><p class="text-secondary">Download pixel-perfect PDFs ready to send or file for your records.</p></div></div>
+        <div class="col-12 col-md-6 col-lg-4"><div class="feature-box"><div class="feature-icon-wrapper"><i class="bi bi-shield-check-fill"></i></div><h4 class="fw-bold">Bank-Grade Security</h4><p class="text-secondary">Your financial data is encrypted, secure, and isolated at all times.</p></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ── How it works ─────────────────────────────────────── -->
-  <section class="how-section" id="how">
-    <div class="section-label">Workflow</div>
-    <h2 class="section-heading">Up and running in 3 steps.</h2>
-    <div class="steps-row">
-      <div class="step">
-        <div class="step-num">01</div>
-        <h4>Add a client</h4>
-        <p>Enter your client's details once — name, email, address.</p>
-      </div>
-      <div class="step-arrow"><i class="bi bi-arrow-right"></i></div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <h4>Create an invoice</h4>
-        <p>Add line items, set due date, preview and confirm.</p>
-      </div>
-      <div class="step-arrow"><i class="bi bi-arrow-right"></i></div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <h4>Send & track</h4>
-        <p>Fire it off by email. Track status in your dashboard.</p>
+  <section id="how" class="section-padding bg-white border-top">
+    <div class="container text-center">
+      <h2 class="display-5 fw-bold mb-5 gs-scroll">Up and running in 3 steps.</h2>
+      <div class="row g-5 gs-scroll-stagger-3">
+        <div class="col-12 col-md-4"><div class="step-number">01</div><h4 class="fw-bold mb-3">Add a client</h4><p class="text-secondary px-3">Enter your client's details once — name, email, and address.</p></div>
+        <div class="col-12 col-md-4"><div class="step-number">02</div><h4 class="fw-bold mb-3">Create invoice</h4><p class="text-secondary px-3">Add line items, set the due date, preview, and hit save.</p></div>
+        <div class="col-12 col-md-4"><div class="step-number">03</div><h4 class="fw-bold mb-3">Send & track</h4><p class="text-secondary px-3">Fire it off to their inbox and track the status in your dashboard.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- ── CTA ─────────────────────────────────────────────── -->
-  <section class="cta-section">
-    <h2>Ready to stop chasing invoices?</h2>
-    <p>Open the dashboard and explore the foundation.</p>
-    <a href="{{ url_for('main.dashboard') }}" class="btn-primary-hero">
-      Open Dashboard <i class="bi bi-arrow-right"></i>
-    </a>
-  </section>
-
-  <!-- ── Footer ──────────────────────────────────────────── -->
-  <footer class="home-footer">
-    <span class="brand-icon">⬡</span> {{ app_name }} &nbsp;·&nbsp;
-    Built with Flask &amp; Bootstrap 5 &nbsp;·&nbsp;
-    <a href="{{ url_for('main.health') }}" target="_blank">Health</a>
+  <footer class="section-padding text-center text-white" style="background-color: var(--ink);">
+    <div class="container">
+      <h2 class="display-4 fw-bold mb-4">Ready to stop chasing invoices?</h2>
+      <a href="{{ url_for('main.dashboard') }}" class="btn-premium bg-primary border-0 mb-5 text-white">Open Dashboard <i class="bi bi-arrow-right"></i></a>
+      <div class="border-top border-secondary pt-5 mt-3 text-secondary">
+        <span style="color: var(--primary);">⬡</span> {{ app_name }} &nbsp;·&nbsp; Engineered for performance.
+      </div>
+    </div>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Hero Entry
+      gsap.from(".gs-hero > *", { y: 30, opacity: 0, duration: 0.8, stagger: 0.15, ease: "power3.out" });
+      gsap.from(".card-1", { x: 50, y: 30, opacity: 0, duration: 1, delay: 0.3, ease: "back.out(1.5)" });
+      gsap.from(".card-2", { x: -50, y: 30, opacity: 0, duration: 1, delay: 0.5, ease: "back.out(1.5)" });
+      
+      // Hero Card Floating
+      gsap.to(".card-1", { y: -15, duration: 3, yoyo: true, repeat: -1, ease: "sine.inOut" });
+      gsap.to(".card-2", { y: 15, duration: 3.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
+
+      // Scroll Fade Ins
+      gsap.utils.toArray('.gs-scroll').forEach(element => {
+        gsap.from(element, { scrollTrigger: { trigger: element, start: "top 85%" }, y: 30, opacity: 0, duration: 0.8, ease: "power2.out" });
+      });
+
+      // Scroll Staggers (Stats, Features, Steps)
+      gsap.from(".gs-scroll-stagger > div", { scrollTrigger: { trigger: ".gs-scroll-stagger", start: "top 85%" }, y: 40, opacity: 0, duration: 0.6, stagger: 0.15, ease: "power2.out" });
+      gsap.from(".gs-scroll-stagger-2 > div", { scrollTrigger: { trigger: ".gs-scroll-stagger-2", start: "top 85%" }, y: 40, opacity: 0, duration: 0.6, stagger: 0.1, ease: "power2.out" });
+      gsap.from(".gs-scroll-stagger-3 > div", { scrollTrigger: { trigger: ".gs-scroll-stagger-3", start: "top 85%" }, y: 40, opacity: 0, duration: 0.6, stagger: 0.15, ease: "power2.out" });
+    });
+  </script>
 </body>
 </html>
