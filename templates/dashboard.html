@@ -9,89 +9,69 @@
 
 {% block content %}
 
-<!-- ══════════════════════════════════════════════════════
-     KPI CARDS
-══════════════════════════════════════════════════════ -->
 <div class="kpi-grid">
 
-  <!-- Revenue this month -->
   <div class="kpi-card accent-left green">
     <div class="kpi-top">
-      <div class="kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div>
+      <div class="kpi-icon green"><i class="bi bi-box-arrow-in-down-left"></i></div>
       <div class="kpi-meta">
-        {% if stats.revenue_change_pct is not none %}
-          {% if stats.revenue_change_pct >= 0 %}
-            <span class="kpi-badge up">
-              <i class="bi bi-arrow-up-short"></i>{{ stats.revenue_change_pct }}%
-            </span>
-          {% else %}
-            <span class="kpi-badge down">
-              <i class="bi bi-arrow-down-short"></i>{{ stats.revenue_change_pct|abs }}%
-            </span>
-          {% endif %}
+        <span class="kpi-badge neutral">This Month</span>
+      </div>
+    </div>
+    <div class="kpi-value">₹{{ "{:,.2f}".format(stats.money_in) if stats.money_in else "0.00" }}</div>
+    <div class="kpi-label">Money In (Revenue)</div>
+    <div class="kpi-sub">Total collected this month</div>
+  </div>
+
+  <div class="kpi-card accent-left red" style="border-left-color: #ef4444;">
+    <div class="kpi-top">
+      <div class="kpi-icon red" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i class="bi bi-box-arrow-up-right"></i></div>
+      <div class="kpi-meta">
+        <span class="kpi-badge neutral">This Month</span>
+      </div>
+    </div>
+    <div class="kpi-value">₹{{ "{:,.2f}".format(stats.money_out) if stats.money_out else "0.00" }}</div>
+    <div class="kpi-label">Money Out (Expenses)</div>
+    <div class="kpi-sub">Total paid this month</div>
+  </div>
+
+  <div class="kpi-card accent-left blue">
+    <div class="kpi-top">
+      <div class="kpi-icon blue"><i class="bi bi-wallet2"></i></div>
+      <div class="kpi-meta">
+        {% set net_flow = (stats.money_in or 0) - (stats.money_out or 0) %}
+        {% if net_flow > 0 %}
+          <span class="kpi-badge up"><i class="bi bi-arrow-up-short"></i>Positive</span>
+        {% elif net_flow < 0 %}
+          <span class="kpi-badge down"><i class="bi bi-arrow-down-short"></i>Negative</span>
         {% else %}
-          <span class="kpi-badge neutral">First month</span>
+          <span class="kpi-badge neutral">Breakeven</span>
         {% endif %}
       </div>
     </div>
-    <div class="kpi-value">₹{{ "{:,.2f}".format(stats.revenue_this_month) }}</div>
-    <div class="kpi-label">Revenue This Month</div>
-    <div class="kpi-sub">vs last month</div>
+    <div class="kpi-value">₹{{ "{:,.2f}".format(net_flow|abs) }}</div>
+    <div class="kpi-label">Net Cash Flow</div>
+    <div class="kpi-sub">Money In minus Money Out</div>
   </div>
 
-  <!-- Unpaid invoices -->
-  <div class="kpi-card accent-left {{ 'red' if stats.overdue_count > 0 else 'amber' }}">
+  <div class="kpi-card accent-left amber">
     <div class="kpi-top">
-      <div class="kpi-icon {{ 'red' if stats.overdue_count > 0 else 'amber' }}">
-        <i class="bi bi-{{ 'exclamation-triangle-fill' if stats.overdue_count > 0 else 'hourglass-split' }}"></i>
-      </div>
-      {% if stats.overdue_count > 0 %}
-        <span class="kpi-badge down">{{ stats.overdue_count }} overdue</span>
+      <div class="kpi-icon amber"><i class="bi bi-hourglass-split"></i></div>
+      {% if stats.unpaid_count > 0 %}
+        <span class="kpi-badge down">{{ stats.unpaid_count }} pending</span>
       {% else %}
-        <span class="kpi-badge neutral">All current</span>
+        <span class="kpi-badge neutral">All clear</span>
       {% endif %}
     </div>
     <div class="kpi-value">₹{{ "{:,.2f}".format(stats.unpaid_total) }}</div>
-    <div class="kpi-label">Unpaid Invoices</div>
-    <div class="kpi-sub">{{ stats.unpaid_count }} invoice{{ 's' if stats.unpaid_count != 1 else '' }} pending</div>
-  </div>
-
-  <!-- Total clients -->
-  <div class="kpi-card accent-left teal">
-    <div class="kpi-top">
-      <div class="kpi-icon teal"><i class="bi bi-people-fill"></i></div>
-      {% if stats.new_clients_30 > 0 %}
-        <span class="kpi-badge up">+{{ stats.new_clients_30 }} this month</span>
-      {% else %}
-        <span class="kpi-badge neutral">No new this month</span>
-      {% endif %}
-    </div>
-    <div class="kpi-value">{{ stats.total_clients }}</div>
-    <div class="kpi-label">Total Clients</div>
-    <div class="kpi-sub">{{ stats.new_clients_30 }} added in 30 days</div>
-  </div>
-
-  <!-- Collection rate -->
-  <div class="kpi-card accent-left purple">
-    <div class="kpi-top">
-      <div class="kpi-icon purple"><i class="bi bi-percent"></i></div>
-      <span class="kpi-badge {{ 'up' if stats.collection_rate >= 80 else 'down' if stats.collection_rate < 50 else 'neutral' }}">
-        {{ 'Strong' if stats.collection_rate >= 80 else 'Needs attention' if stats.collection_rate < 50 else 'Moderate' }}
-      </span>
-    </div>
-    <div class="kpi-value">{{ stats.collection_rate }}%</div>
-    <div class="kpi-label">Collection Rate</div>
-    <div class="kpi-sub">₹{{ "{:,.2f}".format(stats.total_revenue) }} of total billed</div>
+    <div class="kpi-label">Pending Collections</div>
+    <div class="kpi-sub">Unpaid incoming invoices</div>
   </div>
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     CHART ROW
-══════════════════════════════════════════════════════ -->
 <div class="chart-row">
 
-  <!-- Monthly Revenue Bar Chart (spans 2/3) -->
   <div class="dash-panel chart-panel-wide">
     <div class="panel-header">
       <div>
@@ -108,7 +88,6 @@
     </div>
   </div>
 
-  <!-- Revenue vs Outstanding Doughnut (spans 1/3) -->
   <div class="dash-panel chart-panel-narrow">
     <div class="panel-header">
       <div>
@@ -139,93 +118,149 @@
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════
-     LOWER PANELS
-══════════════════════════════════════════════════════ -->
 <div class="lower-grid">
 
-  <!-- Unpaid Invoices Table -->
-  <div class="dash-panel">
-    <div class="panel-header">
-      <div>
-        <h2 class="panel-title">Unpaid Invoices</h2>
-        <p class="panel-subtitle">
-          {{ stats.unpaid_count }} pending &nbsp;&bull;&nbsp;
-          ₹{{ "{:,.2f}".format(stats.unpaid_total) }} outstanding
-        </p>
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+
+    <div class="dash-panel" style="margin-bottom: 0;">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Unpaid Invoices (Money In)</h2>
+          <p class="panel-subtitle">
+            {{ stats.unpaid_count }} pending &nbsp;&bull;&nbsp;
+            ₹{{ "{:,.2f}".format(stats.unpaid_total) }} outstanding
+          </p>
+        </div>
+        <a href="{{ url_for('invoices.list_invoices', status='unpaid') }}"
+           class="panel-action">View all &rarr;</a>
       </div>
-      <a href="{{ url_for('invoices.list_invoices', status='unpaid') }}"
-         class="panel-action">View all &rarr;</a>
-    </div>
 
-    {% if unpaid_invoices %}
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Invoice</th>
-          <th>Client</th>
-          <th class="text-right">Total</th>
-          <th>Due Date</th>
-          <th>Status</th>
-          <th class="text-center">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for inv in unpaid_invoices %}
-        <tr class="{{ 'row-overdue' if inv.is_overdue else '' }}">
-          <td><span class="inv-number">{{ inv.invoice_number }}</span></td>
-          <td>
-            <div class="client-name-cell">
-              <div class="client-avatar" style="width:26px;height:26px;font-size:.65rem;border-radius:6px">
-                {{ inv.client.initials }}
+      {% if unpaid_invoices %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Client</th>
+            <th class="text-right">Total</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in unpaid_invoices %}
+          <tr class="{{ 'row-overdue' if inv.is_overdue else '' }}">
+            <td><span class="inv-number">{{ inv.invoice_number }}</span></td>
+            <td>
+              <div class="client-name-cell">
+                <div class="client-avatar" style="width:26px;height:26px;font-size:.65rem;border-radius:6px">
+                  {{ inv.client.initials }}
+                </div>
+                <span class="client-name">{{ inv.client.name }}</span>
               </div>
-              <span class="client-name">{{ inv.client.name }}</span>
-            </div>
-          </td>
-          <td class="text-right mono-num"><strong>{{ inv.total_display }}</strong></td>
-          <td class="table-date">
-            {% if inv.is_overdue %}
-              <span class="overdue-date">
-                <i class="bi bi-exclamation-circle-fill"></i>
+            </td>
+            <td class="text-right mono-num"><strong>{{ inv.total_display }}</strong></td>
+            <td class="table-date">
+              {% if inv.is_overdue %}
+                <span class="overdue-date">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  {{ inv.due_date.strftime('%d %b %Y') }}
+                  <small>({{ (today - inv.due_date).days }}d)</small>
+                </span>
+              {% else %}
                 {{ inv.due_date.strftime('%d %b %Y') }}
-                <small>({{ (today - inv.due_date).days }}d)</small>
-              </span>
-            {% else %}
-              {{ inv.due_date.strftime('%d %b %Y') }}
-            {% endif %}
-          </td>
-          <td>
-            {% set label, css = inv.status_label %}
-            <span class="status-pill {{ css }}">{{ label }}</span>
-          </td>
-          <td class="text-center">
-            <form method="POST"
-                  action="{{ url_for('invoices.mark_paid', invoice_id=inv.id, next=url_for('main.dashboard')) }}"
-                  style="display:inline"
-                  onsubmit="return confirm('Mark {{ inv.invoice_number }} as paid?')">
-              <button type="submit" class="btn-mark-paid">
-                <i class="bi bi-check-lg"></i> Mark Paid
-              </button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-      <div class="empty-icon"><i class="bi bi-check2-circle"></i></div>
-      <p class="empty-title">All invoices are paid!</p>
-      <p class="empty-sub">No outstanding payments. Great work.</p>
+              {% endif %}
+            </td>
+            <td>
+              {% set label, css = inv.status_label %}
+              <span class="status-pill {{ css }}">{{ label }}</span>
+            </td>
+            <td class="text-center">
+              <form method="POST"
+                    action="{{ url_for('invoices.mark_paid', invoice_id=inv.id, next=url_for('main.dashboard')) }}"
+                    style="display:inline"
+                    onsubmit="return confirm('Mark {{ inv.invoice_number }} as paid?')">
+                <button type="submit" class="btn-mark-paid">
+                  <i class="bi bi-check-lg"></i> Mark Paid
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-check2-circle"></i></div>
+        <p class="empty-title">All invoices are paid!</p>
+        <p class="empty-sub">No outstanding incoming payments. Great work.</p>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
 
-  <!-- Right column: Top Clients + Recent Activity -->
-  <div class="lower-aside">
+    <div class="dash-panel" style="margin-bottom: 0;">
+      <div class="panel-header" style="border-bottom-color: var(--red-light, #fee2e2);">
+        <div>
+          <h2 class="panel-title">Unpaid Bills (Money Out)</h2>
+          <p class="panel-subtitle">Action required on these expenses</p>
+        </div>
+        <a href="{{ url_for('bills.list_bills', status='unpaid') }}" class="panel-action">View all &rarr;</a>
+      </div>
 
-    <!-- Top Clients -->
-    <div class="dash-panel">
+      {% if unpaid_bills %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Bill #</th>
+            <th>Vendor</th>
+            <th class="text-right">Total</th>
+            <th>Due Date</th>
+            <th class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bill in unpaid_bills %}
+          <tr class="{{ 'row-overdue' if bill.is_overdue else '' }}">
+            <td><span class="inv-number">{{ bill.bill_number or 'N/A' }}</span></td>
+            <td>
+              <div class="client-name-cell">
+                <span class="client-name">{{ bill.vendor.name if bill.vendor else 'Unknown Vendor' }}</span>
+              </div>
+            </td>
+            <td class="text-right mono-num"><strong>{{ bill.total_display }}</strong></td>
+            <td class="table-date">
+              {% if bill.is_overdue %}
+                <span class="overdue-date">
+                  <i class="bi bi-exclamation-circle-fill"></i>
+                  {{ bill.due_date.strftime('%d %b %Y') }}
+                </span>
+              {% else %}
+                {{ bill.due_date.strftime('%d %b %Y') }}
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <form method="POST" action="{{ url_for('bills.mark_paid', bill_id=bill.id, next=url_for('main.dashboard')) }}" style="display:inline">
+                <button type="submit" class="btn-mark-paid" style="background: rgba(220, 38, 38, 0.1); color: #dc2626;">
+                  <i class="bi bi-check-lg"></i> Mark Paid
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon" style="color: var(--ink-3);"><i class="bi bi-shield-check"></i></div>
+        <p class="empty-title">No pending bills!</p>
+        <p class="empty-sub">All your expenses are settled.</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div> <div class="lower-aside" style="display: flex; flex-direction: column; gap: 24px;">
+
+    <div class="dash-panel" style="margin-bottom: 0;">
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Top Clients</h2>
@@ -246,7 +281,7 @@
             <div class="tc-bar-wrap">
               <div class="tc-bar"
                    {% set percent = (item.total_billed / max_billed * 100) if max_billed > 0 else 0 %}
-style="width:{{ percent | int }}%">
+                   style="width:{{ percent | int }}%">
               </div>
             </div>
           </div>
@@ -266,8 +301,7 @@ style="width:{{ percent | int }}%">
       {% endif %}
     </div>
 
-    <!-- Recent Activity -->
-    <div class="dash-panel">
+    <div class="dash-panel" style="margin-bottom: 0;">
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Recent Invoices</h2>
@@ -306,10 +340,41 @@ style="width:{{ percent | int }}%">
       {% endif %}
     </div>
 
-  </div><!-- /lower-aside -->
-</div><!-- /lower-grid -->
+    <div class="dash-panel" style="margin-bottom: 0;">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Recent Bills</h2>
+          <p class="panel-subtitle">Latest 5 logged expenses</p>
+        </div>
+        <a href="{{ url_for('bills.list_bills') }}" class="panel-action">View all &rarr;</a>
+      </div>
 
-{% endblock %}
+      {% if recent_bills %}
+      <div class="activity-list">
+        {% for bill in recent_bills %}
+        <div class="activity-row">
+          <div class="activity-icon-wrap {{ 'paid' if bill.status == 'paid' else 'overdue' if bill.is_overdue else 'unpaid' }}" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; border: none;">
+            <i class="bi bi-{{ 'check-lg' if bill.status == 'paid' else 'exclamation-lg' if bill.is_overdue else 'receipt' }}"></i>
+          </div>
+          <div class="activity-info">
+            <div class="activity-title">
+              <span class="inv-number" style="font-size:.75rem">{{ bill.bill_number or 'Bill' }}</span>
+              &nbsp;{{ bill.vendor.name if bill.vendor else 'Vendor' }}
+            </div>
+            <div class="activity-date">{{ bill.created_at.strftime('%d %b %Y') }}</div>
+          </div>
+          <div class="activity-amount" style="color: var(--red);">-{{ bill.total_display }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:28px 24px">
+        <p class="empty-title">No bills yet</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div></div>{% endblock %}
 
 {% block scripts %}
 <script>

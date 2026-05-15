@@ -1,5 +1,5 @@
 """
-routes/main.py — Dashboard with multi-user scoped stats.
+routes/main.py — Dashboard with multi-user scoped stats (Cash Flow Edition).
 """
 import json
 from datetime import date, datetime, timezone
@@ -22,13 +22,14 @@ def index():
 @login_required
 def dashboard(): 
 
-     # 🚨 Force setup
+    # 🚨 Force setup
     profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
     if not profile:
         return redirect(url_for("main.settings_profile"))
 
     from extensions import db
-    from models import Client, Invoice, InvoiceStatus
+    # We now import Bill here to calculate Money Out!
+    from models import Client, Invoice, InvoiceStatus, Bill
 
     uid        = current_user.id
     today      = date.today()
@@ -36,32 +37,48 @@ def dashboard():
 
     def inv_q():
         return Invoice.query.filter_by(owner_id=uid)
+        
+    def bill_q():
+        return Bill.query.filter_by(owner_id=uid)
 
-    revenue_this_month = float(db.session.query(
+    # ─── 1. MONEY IN (Revenue this month) ──────────────────────────
+    money_in = float(db.session.query(
         db.func.coalesce(db.func.sum(Invoice.total), 0)
     ).filter(Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID,
              Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
-    prev_start = month_start - relativedelta(months=1)
-    revenue_prev_month = float(db.session.query(
-        db.func.coalesce(db.func.sum(Invoice.total), 0)
-    ).filter(Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID,
-             Invoice.paid_at >= datetime(prev_start.year, prev_start.month, 1, tzinfo=timezone.utc),
-             Invoice.paid_at <  datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc)
+    # ─── 2. MONEY OUT (Expenses this month) ────────────────────────
+    # Try to use InvoiceStatus.PAID if Bill uses the same enum, or fallback to string 'paid'
+    try:
+        from models import BillStatus
+        bill_paid = BillStatus.PAID
+        bill_unpaid = BillStatus.UNPAID
+    except ImportError:
+        bill_paid = 'paid'
+        bill_unpaid = 'unpaid'
+
+    money_out = float(db.session.query(
+        db.func.coalesce(db.func.sum(Bill.total), 0)
+    ).filter(Bill.owner_id == uid, Bill.status == bill_paid,
+             Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
-    revenue_change_pct = None
-    if revenue_prev_month > 0:
-        revenue_change_pct = round(
-            ((revenue_this_month - revenue_prev_month) / revenue_prev_month) * 100, 1)
+    # ─── 3. UNPAID INVOICES (Money In) ──────────────────────────────
+    all_unpaid_inv = inv_q().filter_by(status=InvoiceStatus.UNPAID).all()
+    unpaid_count   = len(all_unpaid_inv)
+    unpaid_total   = float(sum(inv.total for inv in all_unpaid_inv))
+    unpaid_invoices = sorted(all_unpaid_inv, key=lambda i: (not i.is_overdue, i.due_date))[:8]
 
-    all_unpaid    = inv_q().filter_by(status=InvoiceStatus.UNPAID).all()
-    unpaid_count  = len(all_unpaid)
-    unpaid_total  = float(sum(inv.total for inv in all_unpaid))
-    overdue_count = sum(1 for inv in all_unpaid if inv.is_overdue)
-    unpaid_invoices = sorted(all_unpaid, key=lambda i: (not i.is_overdue, i.due_date))[:8]
+    # ─── 4. UNPAID BILLS (Money Out) ────────────────────────────────
+    all_unpaid_bills = bill_q().filter_by(status=bill_unpaid).all()
+    unpaid_bills = sorted(all_unpaid_bills, key=lambda b: (not getattr(b, 'is_overdue', False), getattr(b, 'due_date', datetime.max)))[:8]
 
+    # ─── 5. RECENT ACTIVITY ─────────────────────────────────────────
+    recent_invoices = inv_q().order_by(Invoice.created_at.desc()).limit(5).all()
+    recent_bills    = bill_q().order_by(Bill.created_at.desc()).limit(5).all()
+
+    # ─── 6. CLIENTS & TOTALS (For Charts) ───────────────────────────
     total_clients  = Client.query.filter_by(owner_id=uid, is_active=True).count()
     new_clients_30 = Client.query.filter_by(owner_id=uid).filter(
         Client.created_at >= datetime.now(timezone.utc) - relativedelta(days=30)
@@ -77,7 +94,7 @@ def dashboard():
 
     collection_rate = round((total_revenue / total_issued) * 100, 1) if total_issued > 0 else 0
 
-    # 12-month chart data
+    # 12-month chart data (Kept exactly as you had it)
     chart_labels  = []
     chart_revenue = []
     chart_issued  = []
@@ -111,17 +128,23 @@ def dashboard():
     top_clients = [{"client": c, "total_billed": float(t), "invoice_count": cnt}
                    for c, t, cnt in top_clients_raw]
 
-    recent_invoices = inv_q().order_by(Invoice.created_at.desc()).limit(5).all()
 
+    # Send everything to the HTML template
     return render_template("dashboard.html",
-        stats={"revenue_this_month": revenue_this_month,
-               "revenue_change_pct": revenue_change_pct,
-               "unpaid_count": unpaid_count, "unpaid_total": unpaid_total,
-               "overdue_count": overdue_count, "total_clients": total_clients,
-               "new_clients_30": new_clients_30, "total_revenue": total_revenue,
-               "collection_rate": collection_rate},
+        stats={
+            "money_in": money_in,
+            "money_out": money_out,
+            "unpaid_count": unpaid_count, 
+            "unpaid_total": unpaid_total,
+            "total_clients": total_clients,
+            "new_clients_30": new_clients_30, 
+            "total_revenue": total_revenue,
+            "collection_rate": collection_rate
+        },
         unpaid_invoices = unpaid_invoices,
+        unpaid_bills    = unpaid_bills,      # Added!
         recent_invoices = recent_invoices,
+        recent_bills    = recent_bills,      # Added!
         top_clients     = top_clients,
         chart_labels    = json.dumps(chart_labels),
         chart_revenue   = json.dumps(chart_revenue),
@@ -150,7 +173,6 @@ def settings_profile():
     profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
 
     if request.method == "POST":
-
         if not profile:
             profile = BusinessProfile(owner_id=current_user.id)
 
