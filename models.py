@@ -363,6 +363,10 @@ class BillItem(db.Model):
     @property
     def total_display(self):
         return f"\u20b9{float(self.item_total):,.2f}"
+    
+    @property
+    def total_display(self):
+        return self.grand_total_display
 
     @property
     def gst_rate_display(self):

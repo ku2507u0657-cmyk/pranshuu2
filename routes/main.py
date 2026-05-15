@@ -59,7 +59,7 @@ def dashboard():
         bill_unpaid = 'unpaid'
 
     money_out = float(db.session.query(
-        db.func.coalesce(db.func.sum(Bill.total), 0)
+        db.func.coalesce(db.func.sum(Bill.grand_total), 0)
     ).filter(Bill.owner_id == uid, Bill.status == bill_paid,
              Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
