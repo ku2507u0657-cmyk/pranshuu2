@@ -44,8 +44,11 @@ def dashboard():
     # ─── 1. MONEY IN (Revenue this month) ──────────────────────────
     money_in = float(db.session.query(
         db.func.coalesce(db.func.sum(Invoice.total), 0)
-    ).filter(Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID,
-             Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
+    ).filter(
+        Invoice.owner_id == uid, 
+        Invoice.status == InvoiceStatus.PAID,
+        Invoice.transaction_type == 'in',  # <--- Added Filter
+        Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
     # ─── 2. MONEY OUT (Expenses this month) ────────────────────────
@@ -60,8 +63,11 @@ def dashboard():
 
     money_out = float(db.session.query(
         db.func.coalesce(db.func.sum(Bill.grand_total), 0)
-    ).filter(Bill.owner_id == uid, Bill.status == bill_paid,
-             Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
+    ).filter(
+        Bill.owner_id == uid, 
+        Bill.status == bill_paid,
+        Bill.transaction_type == 'out',  # <--- Added Filter
+        Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
     # ─── 3. UNPAID INVOICES (Money In) ──────────────────────────────
@@ -142,9 +148,9 @@ def dashboard():
             "collection_rate": collection_rate
         },
         unpaid_invoices = unpaid_invoices,
-        unpaid_bills    = unpaid_bills,      # Added!
+        unpaid_bills    = unpaid_bills,      
         recent_invoices = recent_invoices,
-        recent_bills    = recent_bills,      # Added!
+        recent_bills    = recent_bills,      
         top_clients     = top_clients,
         chart_labels    = json.dumps(chart_labels),
         chart_revenue   = json.dumps(chart_revenue),

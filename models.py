@@ -142,6 +142,7 @@ class Invoice(db.Model):
     due_date       = db.Column(db.Date,           nullable=False)
     status         = db.Column(db.String(10),     nullable=False,
                                 default=InvoiceStatus.UNPAID, index=True)
+    transaction_type = db.Column(db.String(10), nullable=False, default='in')
     pdf_path       = db.Column(db.String(300),    nullable=True)
     notes          = db.Column(db.Text,           nullable=True)
     is_recurring   = db.Column(db.Boolean,        default=False, nullable=False)
@@ -255,6 +256,7 @@ class Bill(db.Model):
     notes       = db.Column(db.Text,           nullable=True)
     status      = db.Column(db.String(10),     nullable=False,
                              default=BillStatus.UNPAID, index=True)
+    transaction_type = db.Column(db.String(10), nullable=False, default='out')
     pdf_path    = db.Column(db.String(300),    nullable=True)
     due_date    = db.Column(db.Date,           nullable=True)
     paid_at     = db.Column(db.DateTime,       nullable=True)

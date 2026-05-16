@@ -3,6 +3,47 @@
 {% block page_title %}New Bill{% endblock %}
 
 {% block content %}
+<style>
+/* Sleek Segmented Control for Money In / Out */
+.transaction-toggle {
+  display: inline-flex;
+  background: var(--bg, #f4f4f5);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e4e4e7);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.transaction-toggle label {
+  margin: 0;
+  cursor: pointer;
+}
+.transaction-toggle input[type="radio"] {
+  display: none;
+}
+.transaction-toggle .toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-3, #71717a);
+  transition: all 0.2s ease;
+}
+.transaction-toggle input[type="radio"]:checked + .toggle-pill.money-in {
+  background: #dcfce7;
+  color: #166534;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.transaction-toggle input[type="radio"]:checked + .toggle-pill.money-out {
+  background: #fee2e2;
+  color: #991b1b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+</style>
+
 <nav class="breadcrumb-nav">
   <a href="{{ url_for('bills.list_bills') }}">Bills</a>
   <i class="bi bi-chevron-right"></i>
@@ -11,7 +52,6 @@
 
 <form method="POST" id="billForm" novalidate>
 
-  <!-- ── Top bar: client + date ─────────────────────────── -->
   <div class="form-card" style="margin-bottom:16px">
     <div class="form-card-header">
       <div class="form-card-icon teal"><i class="bi bi-receipt"></i></div>
@@ -20,14 +60,36 @@
         <p class="form-card-sub">Add items, set per-item GST, auto-generates PDF and sends email.</p>
       </div>
     </div>
+    
     <div class="client-form">
+      
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label class="form-label required">Transaction Type</label>
+          <div class="transaction-toggle">
+            <label>
+              <input type="radio" name="transaction_type" value="in">
+              <span class="toggle-pill money-in">
+                <i class="bi bi-box-arrow-in-down-left"></i> Money In
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="transaction_type" value="out" checked>
+              <span class="toggle-pill money-out">
+                <i class="bi bi-box-arrow-up-right"></i> Money Out
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="form-row two-col">
         <div class="form-group">
-          <label class="form-label required" for="client_id">Client</label>
+          <label class="form-label required" for="client_id">Vendor / Client</label>
           <div class="input-wrap">
             <i class="bi bi-person input-icon"></i>
             <select id="client_id" name="client_id" class="form-field form-select" required>
-              <option value="">— Select a client —</option>
+              <option value="">— Select a contact —</option>
               {% for c in clients %}
               <option value="{{ c.id }}"
                 {{ 'selected' if (preselected == c.id or form.get('client_id','') == c.id|string) }}>
@@ -60,7 +122,6 @@
     </div>
   </div>
 
-  <!-- ── Line items table ─────────────────────────────────── -->
   <div class="dash-panel" style="margin-bottom:16px;overflow:visible">
     <div class="panel-header">
       <h2 class="panel-title">Line Items</h2>
@@ -85,8 +146,7 @@
           </tr>
         </thead>
         <tbody id="itemsBody">
-          <!-- Rows injected by JS -->
-        </tbody>
+          </tbody>
         <tfoot>
           <tr style="background:var(--bg)">
             <td colspan="5" style="padding:10px 16px;font-size:.8rem;color:var(--ink-3)">
@@ -111,7 +171,6 @@
     </div>
   </div>
 
-  <!-- ── Grand total summary ───────────────────────────────── -->
   <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
     <div style="background:var(--surface);border:1px solid var(--border);
                 border-radius:var(--radius);padding:20px 28px;min-width:300px;
@@ -136,7 +195,6 @@
     </div>
   </div>
 
-  <!-- ── Actions ──────────────────────────────────────────── -->
   <div style="display:flex;justify-content:flex-end;gap:12px;margin-bottom:32px">
     <a href="{{ url_for('bills.list_bills') }}" class="btn-cancel">
       <i class="bi bi-x-lg"></i> Cancel
@@ -148,7 +206,6 @@
 
 </form>
 
-<!-- ── Row template (hidden) ─────────────────────────────── -->
 <template id="rowTemplate">
   <tr class="item-row">
     <td style="padding:8px 8px">
@@ -206,7 +263,6 @@ function addRow() {
   const tmpl = document.getElementById('rowTemplate');
   const row  = tmpl.content.cloneNode(true);
   document.getElementById('itemsBody').appendChild(row);
-  // focus first input of new row
   const rows = document.querySelectorAll('#itemsBody .item-row');
   rows[rows.length - 1].querySelector('input').focus();
 }
@@ -257,7 +313,6 @@ function recalcAll() {
   document.getElementById('sumTotal').textContent     = fmt(grandTotal);
 }
 
-// Validate at least one item on submit
 document.getElementById('billForm').addEventListener('submit', function(e) {
   const names = document.querySelectorAll('input[name="item_name[]"]');
   const filled = Array.from(names).filter(i => i.value.trim());
@@ -267,7 +322,6 @@ document.getElementById('billForm').addEventListener('submit', function(e) {
   }
 });
 
-// Start with 3 empty rows
 document.addEventListener('DOMContentLoaded', function() {
   addRow(); addRow(); addRow();
 });

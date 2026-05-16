@@ -84,6 +84,9 @@ def create_bill(client_id=None):
         cid     = request.form.get("client_id", "").strip()
         notes   = request.form.get("notes",     "").strip()
         due_raw = request.form.get("due_date",  "").strip()
+        
+        # --- NEW: Get Transaction Type from Toggle ---
+        transaction_type = request.form.get("transaction_type", "out").strip()
 
         item_names   = request.form.getlist("item_name[]")
         descriptions = request.form.getlist("description[]")
@@ -142,12 +145,13 @@ def create_bill(client_id=None):
             )
 
         bill = Bill(
-            owner_id    = current_user.id,
-            bill_number = Bill.next_bill_number(current_user.id),
-            client_id   = int(cid),
-            notes       = notes or None,
-            status      = BillStatus.UNPAID,
-            due_date    = due_date,
+            owner_id         = current_user.id,
+            bill_number      = Bill.next_bill_number(current_user.id),
+            client_id        = int(cid),
+            notes            = notes or None,
+            status           = BillStatus.UNPAID,
+            due_date         = due_date,
+            transaction_type = transaction_type # <--- Saved here!
         )
         db.session.add(bill)
         db.session.flush()

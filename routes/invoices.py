@@ -107,6 +107,9 @@ def create_invoice():
         due_date_s = request.form.get("due_date",  "").strip()
         notes      = request.form.get("notes",     "").strip()
         gst_rate_s = request.form.get("gst_rate",  "18").strip()
+        
+        # --- NEW: Get Transaction Type from Toggle ---
+        transaction_type = request.form.get("transaction_type", "in").strip()
 
         errors = []
         client = None
@@ -155,16 +158,17 @@ def create_invoice():
         gst_amount, total = Invoice.calculate_gst(amount, rate=gst_rate)
 
         invoice = Invoice(
-            owner_id       = current_user.id,
-            invoice_number = Invoice.next_invoice_number(owner_id=current_user.id),
-            client_id      = int(client_id),
-            amount         = amount,
-            gst            = gst_amount,
-            gst_rate       = gst_rate,
-            total          = total,
-            due_date       = due_date,
-            status         = InvoiceStatus.UNPAID,
-            notes          = notes or None,
+            owner_id         = current_user.id,
+            invoice_number   = Invoice.next_invoice_number(owner_id=current_user.id),
+            client_id        = int(client_id),
+            amount           = amount,
+            gst              = gst_amount,
+            gst_rate         = gst_rate,
+            total            = total,
+            due_date         = due_date,
+            status           = InvoiceStatus.UNPAID,
+            notes            = notes or None,
+            transaction_type = transaction_type # <--- Saved here!
         )
         db.session.add(invoice)
         db.session.flush()

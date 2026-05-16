@@ -4,6 +4,47 @@
 
 {% block content %}
 
+<style>
+/* Sleek Segmented Control for Money In / Out */
+.transaction-toggle {
+  display: inline-flex;
+  background: var(--bg, #f4f4f5);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #e4e4e7);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.transaction-toggle label {
+  margin: 0;
+  cursor: pointer;
+}
+.transaction-toggle input[type="radio"] {
+  display: none;
+}
+.transaction-toggle .toggle-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-3, #71717a);
+  transition: all 0.2s ease;
+}
+.transaction-toggle input[type="radio"]:checked + .toggle-pill.money-in {
+  background: #dcfce7;
+  color: #166534;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.transaction-toggle input[type="radio"]:checked + .toggle-pill.money-out {
+  background: #fee2e2;
+  color: #991b1b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+</style>
+
 <nav class="breadcrumb-nav">
   <a href="{{ url_for('invoices.list_invoices') }}">Invoices</a>
   <i class="bi bi-chevron-right"></i>
@@ -12,7 +53,6 @@
 
 <div class="create-invoice-layout">
 
-  <!-- ── Form ──────────────────────────────────────────────── -->
   <div class="form-card" style="max-width:100%;flex:1">
     <div class="form-card-header">
       <div class="form-card-icon purple">
@@ -27,7 +67,26 @@
     <form method="POST" action="{{ url_for('invoices.create_invoice') }}"
           novalidate class="client-form" id="invoiceForm">
 
-      <!-- Client -->
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label class="form-label required">Transaction Type</label>
+          <div class="transaction-toggle">
+            <label>
+              <input type="radio" name="transaction_type" value="in" checked>
+              <span class="toggle-pill money-in">
+                <i class="bi bi-box-arrow-in-down-left"></i> Money In
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="transaction_type" value="out">
+              <span class="toggle-pill money-out">
+                <i class="bi bi-box-arrow-up-right"></i> Money Out
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="form-group full-width">
           <label class="form-label required" for="client_id">Client</label>
@@ -55,7 +114,6 @@
         </div>
       </div>
 
-      <!-- Amount + Due date -->
       <div class="form-row two-col">
         <div class="form-group">
           <label class="form-label required" for="amount">Base Amount (excl. GST) ₹</label>
@@ -78,7 +136,6 @@
         </div>
       </div>
 
-      <!-- GST Rate Selector -->
       <div class="form-row">
         <div class="form-group full-width">
           <label class="form-label required">GST Rate</label>
@@ -102,7 +159,6 @@
             </label>
             {% endfor %}
 
-            <!-- Custom -->
             <label class="gst-slab-btn" id="gst-label-custom">
               <input type="radio" name="gst_rate_radio" value="custom"
                      onchange="selectGst('custom')"
@@ -112,7 +168,6 @@
             </label>
           </div>
 
-          <!-- Custom input -->
           <div id="custom_gst_wrap" style="display:none;max-width:200px;margin-bottom:8px">
             <div class="input-wrap">
               <i class="bi bi-percent input-icon"></i>
@@ -123,7 +178,6 @@
             </div>
           </div>
 
-          <!-- The actual submitted field -->
           <input type="hidden" name="gst_rate" id="gst_rate_value"
                  value="{{ form.get('gst_rate', '18') }}" />
 
@@ -134,7 +188,6 @@
         </div>
       </div>
 
-      <!-- Notes -->
       <div class="form-row">
         <div class="form-group full-width">
           <label class="form-label" for="notes">Description / Notes (optional)</label>
@@ -147,7 +200,6 @@
         </div>
       </div>
 
-      <!-- GST Live Preview -->
       <div class="gst-preview-block">
         <div class="gst-row">
           <span class="gst-label">Base Amount</span>
@@ -166,7 +218,6 @@
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="form-actions">
         <a href="{{ url_for('invoices.list_invoices') }}" class="btn-cancel">
           <i class="bi bi-x-lg"></i> Cancel
@@ -178,7 +229,6 @@
     </form>
   </div>
 
-  <!-- ── Info sidebar ───────────────────────────────────────── -->
   <div class="invoice-info-sidebar">
     <div class="info-card">
       <div class="info-card-header">
@@ -274,7 +324,6 @@ function prefillFee(sel) {
 
 document.addEventListener('DOMContentLoaded', function() {
   highlightSlab();
-  // Show custom input if a non-standard rate was saved
   const savedRate = document.getElementById('gst_rate_value').value;
   if (!['0','5','12','18','28'].includes(savedRate)) {
     document.getElementById('custom_gst_wrap').style.display = 'block';
