@@ -41,18 +41,7 @@ def dashboard():
     def bill_q():
         return Bill.query.filter_by(owner_id=uid)
 
-    # ─── 1. MONEY IN (Revenue this month) ──────────────────────────
-    money_in = float(db.session.query(
-        db.func.coalesce(db.func.sum(Invoice.total), 0)
-    ).filter(
-        Invoice.owner_id == uid, 
-        Invoice.status == InvoiceStatus.PAID,
-        Invoice.transaction_type == 'in',  # <--- Added Filter
-        Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
-    ).scalar())
-
-    # ─── 2. MONEY OUT (Expenses this month) ────────────────────────
-    # Try to use InvoiceStatus.PAID if Bill uses the same enum, or fallback to string 'paid'
+    # Grab bill statuses first
     try:
         from models import BillStatus
         bill_paid = BillStatus.PAID
@@ -61,14 +50,51 @@ def dashboard():
         bill_paid = 'paid'
         bill_unpaid = 'unpaid'
 
-    money_out = float(db.session.query(
+    # ─── 1. MONEY IN (Revenue this month) ──────────────────────────
+    # Look for 'in' transactions in Invoices
+    inv_money_in = float(db.session.query(
+        db.func.coalesce(db.func.sum(Invoice.total), 0)
+    ).filter(
+        Invoice.owner_id == uid, 
+        Invoice.status == InvoiceStatus.PAID,
+        Invoice.transaction_type == 'in',
+        Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
+    ).scalar())
+
+    # Look for 'in' transactions in Bills
+    bill_money_in = float(db.session.query(
         db.func.coalesce(db.func.sum(Bill.grand_total), 0)
     ).filter(
         Bill.owner_id == uid, 
         Bill.status == bill_paid,
-        Bill.transaction_type == 'out',  # <--- Added Filter
+        Bill.transaction_type == 'in',
         Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
+
+    money_in = inv_money_in + bill_money_in
+
+    # ─── 2. MONEY OUT (Expenses this month) ────────────────────────
+    # Look for 'out' transactions in Invoices
+    inv_money_out = float(db.session.query(
+        db.func.coalesce(db.func.sum(Invoice.total), 0)
+    ).filter(
+        Invoice.owner_id == uid, 
+        Invoice.status == InvoiceStatus.PAID,
+        Invoice.transaction_type == 'out',
+        Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
+    ).scalar())
+
+    # Look for 'out' transactions in Bills
+    bill_money_out = float(db.session.query(
+        db.func.coalesce(db.func.sum(Bill.grand_total), 0)
+    ).filter(
+        Bill.owner_id == uid, 
+        Bill.status == bill_paid,
+        Bill.transaction_type == 'out',
+        Bill.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
+    ).scalar())
+
+    money_out = inv_money_out + bill_money_out
 
     # ─── 3. UNPAID INVOICES (Money In) ──────────────────────────────
     all_unpaid_inv = inv_q().filter_by(status=InvoiceStatus.UNPAID).all()
