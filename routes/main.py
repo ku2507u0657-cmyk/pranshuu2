@@ -28,7 +28,6 @@ def dashboard():
         return redirect(url_for("main.settings_profile"))
 
     from extensions import db
-    # We now import Bill here to calculate Money Out!
     from models import Client, Invoice, InvoiceStatus, Bill
 
     uid        = current_user.id
@@ -51,7 +50,6 @@ def dashboard():
         bill_unpaid = 'unpaid'
 
     # ─── 1. MONEY IN (Revenue this month) ──────────────────────────
-    # Look for 'in' transactions in Invoices
     inv_money_in = float(db.session.query(
         db.func.coalesce(db.func.sum(Invoice.total), 0)
     ).filter(
@@ -61,7 +59,6 @@ def dashboard():
         Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
-    # Look for 'in' transactions in Bills
     bill_money_in = float(db.session.query(
         db.func.coalesce(db.func.sum(Bill.grand_total), 0)
     ).filter(
@@ -74,7 +71,6 @@ def dashboard():
     money_in = inv_money_in + bill_money_in
 
     # ─── 2. MONEY OUT (Expenses this month) ────────────────────────
-    # Look for 'out' transactions in Invoices
     inv_money_out = float(db.session.query(
         db.func.coalesce(db.func.sum(Invoice.total), 0)
     ).filter(
@@ -84,7 +80,6 @@ def dashboard():
         Invoice.paid_at >= datetime(today.year, today.month, 1, tzinfo=timezone.utc)
     ).scalar())
 
-    # Look for 'out' transactions in Bills
     bill_money_out = float(db.session.query(
         db.func.coalesce(db.func.sum(Bill.grand_total), 0)
     ).filter(
@@ -96,69 +91,101 @@ def dashboard():
 
     money_out = inv_money_out + bill_money_out
 
-    # ─── 3. UNPAID INVOICES (Money In) ──────────────────────────────
-    all_unpaid_inv = inv_q().filter_by(status=InvoiceStatus.UNPAID).all()
-    unpaid_count   = len(all_unpaid_inv)
-    unpaid_total   = float(sum(inv.total for inv in all_unpaid_inv))
-    unpaid_invoices = sorted(all_unpaid_inv, key=lambda i: (not i.is_overdue, i.due_date))[:8]
+    # ─── 3. PENDING COLLECTIONS (Unpaid Money In) ──────────────────
+    unpaid_inv_in = inv_q().filter_by(status=InvoiceStatus.UNPAID, transaction_type='in').all()
+    unpaid_bill_in = bill_q().filter_by(status=bill_unpaid, transaction_type='in').all()
+    
+    unpaid_count = len(unpaid_inv_in) + len(unpaid_bill_in)
+    unpaid_total = float(sum(i.total for i in unpaid_inv_in) + sum(b.grand_total for b in unpaid_bill_in))
+    
+    # Send unpaid invoices to the HTML table to preserve layout
+    unpaid_invoices = sorted(unpaid_inv_in, key=lambda i: (not i.is_overdue, i.due_date))[:8]
 
-    # ─── 4. UNPAID BILLS (Money Out) ────────────────────────────────
-    all_unpaid_bills = bill_q().filter_by(status=bill_unpaid).all()
-    unpaid_bills = sorted(all_unpaid_bills, key=lambda b: (not getattr(b, 'is_overdue', False), getattr(b, 'due_date', datetime.max)))[:8]
+    # ─── 4. PENDING PAYMENTS (Unpaid Money Out) ────────────────────
+    unpaid_bill_out = bill_q().filter_by(status=bill_unpaid, transaction_type='out').all()
+    unpaid_bills = sorted(unpaid_bill_out, key=lambda b: (not getattr(b, 'is_overdue', False), getattr(b, 'due_date', datetime.max)))[:8]
 
     # ─── 5. RECENT ACTIVITY ─────────────────────────────────────────
     recent_invoices = inv_q().order_by(Invoice.created_at.desc()).limit(5).all()
     recent_bills    = bill_q().order_by(Bill.created_at.desc()).limit(5).all()
 
-    # ─── 6. CLIENTS & TOTALS (For Charts) ───────────────────────────
+    # ─── 6. CHARTS & TOTALS (Strictly checking 'in' transactions) ───
     total_clients  = Client.query.filter_by(owner_id=uid, is_active=True).count()
     new_clients_30 = Client.query.filter_by(owner_id=uid).filter(
         Client.created_at >= datetime.now(timezone.utc) - relativedelta(days=30)
     ).count()
 
-    total_revenue = float(db.session.query(
-        db.func.coalesce(db.func.sum(Invoice.total), 0)
-    ).filter(Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID).scalar())
+    # Total All-Time Revenue (Money In)
+    tr_inv = float(db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+        Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID, Invoice.transaction_type == 'in'
+    ).scalar())
+    tr_bill = float(db.session.query(db.func.coalesce(db.func.sum(Bill.grand_total), 0)).filter(
+        Bill.owner_id == uid, Bill.status == bill_paid, Bill.transaction_type == 'in'
+    ).scalar())
+    total_revenue = tr_inv + tr_bill
 
-    total_issued = float(db.session.query(
-        db.func.coalesce(db.func.sum(Invoice.total), 0)
-    ).filter(Invoice.owner_id == uid).scalar())
+    # Total All-Time Issued (Money In)
+    ti_inv = float(db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+        Invoice.owner_id == uid, Invoice.transaction_type == 'in'
+    ).scalar())
+    ti_bill = float(db.session.query(db.func.coalesce(db.func.sum(Bill.grand_total), 0)).filter(
+        Bill.owner_id == uid, Bill.transaction_type == 'in'
+    ).scalar())
+    total_issued = ti_inv + ti_bill
 
     collection_rate = round((total_revenue / total_issued) * 100, 1) if total_issued > 0 else 0
 
-    # 12-month chart data (Kept exactly as you had it)
+    # 12-Month Chart Loop (Money In ONLY)
     chart_labels  = []
     chart_revenue = []
     chart_issued  = []
+    
     for i in range(11, -1, -1):
         mo_start = month_start - relativedelta(months=i)
         mo_end   = mo_start + relativedelta(months=1)
         chart_labels.append(mo_start.strftime("%b '%y"))
-        paid = float(db.session.query(
-            db.func.coalesce(db.func.sum(Invoice.total), 0)
-        ).filter(Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID,
-                 Invoice.paid_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
-                 Invoice.paid_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
+        
+        # Collected this month (Paid)
+        p_inv = float(db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+            Invoice.owner_id == uid, Invoice.status == InvoiceStatus.PAID, Invoice.transaction_type == 'in',
+            Invoice.paid_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
+            Invoice.paid_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
         ).scalar())
-        issued = float(db.session.query(
-            db.func.coalesce(db.func.sum(Invoice.total), 0)
-        ).filter(Invoice.owner_id == uid,
-                 Invoice.created_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
-                 Invoice.created_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
+        p_bill = float(db.session.query(db.func.coalesce(db.func.sum(Bill.grand_total), 0)).filter(
+            Bill.owner_id == uid, Bill.status == bill_paid, Bill.transaction_type == 'in',
+            Bill.paid_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
+            Bill.paid_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
         ).scalar())
-        chart_revenue.append(round(paid,   2))
-        chart_issued.append(round(issued,  2))
+        
+        # Issued this month
+        i_inv = float(db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+            Invoice.owner_id == uid, Invoice.transaction_type == 'in',
+            Invoice.created_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
+            Invoice.created_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
+        ).scalar())
+        i_bill = float(db.session.query(db.func.coalesce(db.func.sum(Bill.grand_total), 0)).filter(
+            Bill.owner_id == uid, Bill.transaction_type == 'in',
+            Bill.created_at >= datetime(mo_start.year, mo_start.month, 1, tzinfo=timezone.utc),
+            Bill.created_at <  datetime(mo_end.year, mo_end.month, 1, tzinfo=timezone.utc)
+        ).scalar())
+        
+        chart_revenue.append(round(p_inv + p_bill, 2))
+        chart_issued.append(round(i_inv + i_bill, 2))
 
-    from models import Client as C
-    top_clients_raw = (
-        db.session.query(C, db.func.coalesce(db.func.sum(Invoice.total), 0).label("total_billed"),
-                         db.func.count(Invoice.id).label("invoice_count"))
-        .outerjoin(Invoice, db.and_(Invoice.client_id == C.id, Invoice.owner_id == uid))
-        .filter(C.owner_id == uid)
-        .group_by(C.id).order_by(db.text("total_billed DESC")).limit(5).all()
-    )
-    top_clients = [{"client": c, "total_billed": float(t), "invoice_count": cnt}
-                   for c, t, cnt in top_clients_raw]
+    # Top Clients (By Total Money In)
+    top_clients_raw = []
+    for c in Client.query.filter_by(owner_id=uid).all():
+        inv_sum = db.session.query(db.func.sum(Invoice.total)).filter(Invoice.client_id == c.id, Invoice.transaction_type == 'in').scalar() or 0
+        bill_sum = db.session.query(db.func.sum(Bill.grand_total)).filter(Bill.client_id == c.id, Bill.transaction_type == 'in').scalar() or 0
+        total_b = float(inv_sum) + float(bill_sum)
+        
+        inv_cnt = Invoice.query.filter_by(client_id=c.id, transaction_type='in').count()
+        bill_cnt = Bill.query.filter_by(client_id=c.id, transaction_type='in').count()
+        
+        if total_b > 0:
+            top_clients_raw.append({"client": c, "total_billed": total_b, "invoice_count": inv_cnt + bill_cnt})
+    
+    top_clients = sorted(top_clients_raw, key=lambda x: x["total_billed"], reverse=True)[:5]
 
 
     # Send everything to the HTML template

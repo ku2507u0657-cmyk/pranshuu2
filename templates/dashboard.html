@@ -19,7 +19,7 @@
       </div>
     </div>
     <div class="kpi-value">₹{{ "{:,.2f}".format(stats.money_in) if stats.money_in else "0.00" }}</div>
-    <div class="kpi-label">Money In (Revenue)</div>
+    <div class="kpi-label">Revenue</div>
     <div class="kpi-sub">Total collected this month</div>
   </div>
 
@@ -31,7 +31,7 @@
       </div>
     </div>
     <div class="kpi-value">₹{{ "{:,.2f}".format(stats.money_out) if stats.money_out else "0.00" }}</div>
-    <div class="kpi-label">Money Out (Expenses)</div>
+    <div class="kpi-label">Expenses</div>
     <div class="kpi-sub">Total paid this month</div>
   </div>
 
@@ -51,7 +51,7 @@
     </div>
     <div class="kpi-value">₹{{ "{:,.2f}".format(net_flow|abs) }}</div>
     <div class="kpi-label">Net Cash Flow</div>
-    <div class="kpi-sub">Money In minus Money Out</div>
+    <div class="kpi-sub">Money In - Money Out</div>
   </div>
 
   <div class="kpi-card accent-left amber">
