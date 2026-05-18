@@ -316,7 +316,20 @@ def _render(invoice, app) -> bytes:
     ]))
 
     # UPI QR code (right side of totals row)
-    qr_bytes = build_upi_qr_for_invoice(invoice, app)
+    # UPI QR code (right side of totals row)
+    qr_bytes = b""
+    try:
+        from utils.qr import build_upi_qr_bytes
+        if upi_id:
+            qr_bytes = build_upi_qr_bytes(
+                upi_id=upi_id, 
+                payee_name=company_name, 
+                amount=float(invoice.total), 
+                note=invoice.invoice_number
+            )
+    except Exception as exc:
+        logger.error("QR build failed: %s", exc)
+
     if qr_bytes and upi_id:
         qr_img = Image(io.BytesIO(qr_bytes), width=28*mm, height=28*mm)
         qr_label = [
