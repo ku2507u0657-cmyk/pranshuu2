@@ -75,22 +75,22 @@
         </tr>
 
         <!-- ── Status banner ─────────────────────────────── -->
-        {% set status = bill.effective_status %}
+        {% set status = bill.status %}
         {% if status == 'paid' %}
           {% set banner_bg = '#DCFCE7' %}
           {% set banner_color = '#15803D' %}
-          {% set banner_icon = '&#10003;' %}
-          {% set banner_text = 'This bill has been paid. Thank you!' %}
-        {% elif status == 'overdue' %}
+          {% set banner_icon = '✓' %}
+          {% set banner_text = 'This bill has been marked as paid.' %}
+        {% elif status == 'overdue' or (bill.is_overdue if bill.is_overdue is defined else False) %}
           {% set banner_bg = '#FEE2E2' %}
           {% set banner_color = '#DC2626' %}
-          {% set banner_icon = '&#9888;' %}
-          {% set banner_text = 'This bill is overdue. Please arrange payment as soon as possible.' %}
+          {% set banner_icon = '⚠️' %}
+          {% set banner_text = 'This bill is overdue. Please arrange payment.' %}
         {% else %}
           {% set banner_bg = '#FEF3C7' %}
           {% set banner_color = '#92400E' %}
-          {% set banner_icon = '&#128337;' %}
-          {% set banner_text = 'Payment is due by ' ~ (bill.due_date.strftime('%d %B %Y') if bill.due_date else 'the date on the bill') ~ '.' %}
+          {% set banner_icon = '📅' %}
+          {% set banner_text = 'Payment is due by ' + bill.due_date.strftime('%d %B %Y') + '.' %}
         {% endif %}
 
         <tr>

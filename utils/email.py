@@ -27,7 +27,15 @@ class EmailError(Exception):
 
 def send_invoice_email(invoice, app) -> None:
     cfg          = app.config
-    company_name = cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
+    
+    # ─── NEW: Query the database for the user's business profile ───
+    from models import BusinessProfile
+    profile = BusinessProfile.query.filter_by(owner_id=invoice.owner_id).first()
+    
+    # Fallback to config if profile doesn't exist yet
+    company_name = profile.business_name if profile and profile.business_name else cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
+    from_address = profile.email if profile and profile.email else cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", ""))
+    # ───────────────────────────────────────────────────────────────
 
     _guard_enabled(cfg)
     recipient = _resolve_recipient(invoice, cfg)
@@ -43,7 +51,7 @@ def send_invoice_email(invoice, app) -> None:
     _brevo_api_send(
         subject=subject,
         from_name=cfg.get("MAIL_FROM_NAME", company_name),
-        from_address=cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
+        from_address=from_address,
         recipient_email=recipient,
         recipient_name=invoice.client.name,
         html_body=html_body,
@@ -95,7 +103,14 @@ def send_reminder_email(invoice, app, days_overdue: int = 0) -> None:
 
 def send_bill_email(bill, app) -> None:
     cfg          = app.config
-    company_name = cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
+    
+    # ─── NEW: Query the database for the user's business profile ───
+    from models import BusinessProfile
+    profile = BusinessProfile.query.filter_by(owner_id=bill.owner_id).first()
+    
+    company_name = profile.business_name if profile and profile.business_name else cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
+    from_address = profile.email if profile and profile.email else cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", ""))
+    # ───────────────────────────────────────────────────────────────
 
     _guard_enabled(cfg)
     recipient = bill.client.email or cfg.get("MAIL_FALLBACK_RECIPIENT")
@@ -122,7 +137,7 @@ def send_bill_email(bill, app) -> None:
     _brevo_api_send(
         subject=subject,
         from_name=cfg.get("MAIL_FROM_NAME", company_name),
-        from_address=cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
+        from_address=from_address,
         recipient_email=recipient,
         recipient_name=bill.client.name,
         html_body=html_body,
@@ -131,7 +146,6 @@ def send_bill_email(bill, app) -> None:
         pdf_filename=f"{bill.bill_number}.pdf",
     )
     logger.info("Bill email sent via Brevo API: %s -> %s", bill.bill_number, recipient)
-
 
 # ─────────────────────────────────────────────────────────────
 #  Private helpers

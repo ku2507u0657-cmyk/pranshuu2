@@ -10,40 +10,7 @@
   <span>Business Profile</span>
 </nav>
 
-<div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; margin-top: 16px;">
-
-  <div class="form-card">
-    <div style="text-align: center; padding: 16px 0;">
-      
-      <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--ink, #111); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 32px; font-family: var(--font-display); font-weight: 700; margin: 0 auto 16px auto; box-shadow: var(--shadow);">
-        {{ profile.business_name[0] | upper if profile and profile.business_name else 'B' }}
-      </div>
-      
-      <h3 style="font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; margin-bottom: 4px; color: var(--ink);">
-        {{ profile.business_name or 'Your Business' }}
-      </h3>
-      <p style="color: var(--ink-3); font-size: 0.85rem; margin-bottom: 24px; font-weight: 500;">
-        {{ profile.owner_name or 'Owner Name' }}
-      </p>
-
-      <div style="text-align: left; background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 0.85rem; color: var(--ink-2); display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <i class="bi bi-telephone-fill" style="color: var(--blue);"></i>
-          <span style="font-family: monospace; font-size: 0.9rem;">{{ profile.phone or 'Not set' }}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <i class="bi bi-envelope-fill" style="color: var(--blue);"></i>
-          <span>{{ profile.email or 'Not set' }}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <i class="bi bi-qr-code-scan" style="color: var(--blue);"></i>
-          <span>{{ profile.upi_id or 'Not set' }}</span>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
+<div style="max-width: 800px; margin: 24px auto;">
   <div class="form-card">
     
     <div class="form-card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
@@ -115,16 +82,6 @@
             <i class="bi bi-envelope input-icon"></i>
             <input type="email" class="form-field" name="email" 
                    value="{{ profile.email if profile else '' }}">
-          </div>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group full-width" style="margin-bottom: 0;">
-          <label class="form-label">Registered Address</label>
-          <div class="input-wrap" style="align-items: flex-start; padding-top: 12px;">
-            <i class="bi bi-geo-alt input-icon" style="margin-top: 2px;"></i>
-            <textarea class="form-field" name="address" rows="3" style="resize: vertical; padding-left: 38px;">{{ profile.address if profile else '' }}</textarea>
           </div>
         </div>
       </div>

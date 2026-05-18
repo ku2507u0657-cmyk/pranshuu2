@@ -64,17 +64,22 @@ def build_bill_pdf_bytes(bill, app):
 
 def _render(bill, app) -> bytes:
     from utils.qr import build_upi_qr_bytes
+    from models import BusinessProfile
 
     buf    = io.BytesIO()
     styles = getSampleStyleSheet()
 
-    company_name    = app.config.get("COMPANY_NAME",    "InvoiceFlow")
-    company_address = app.config.get("COMPANY_ADDRESS", "")
-    company_phone   = app.config.get("COMPANY_PHONE",   "")
-    company_email   = app.config.get("COMPANY_EMAIL",   "")
-    company_gstin   = app.config.get("COMPANY_GSTIN",   "")
-    company_logo    = app.config.get("COMPANY_LOGO",    "")
-    upi_id          = app.config.get("UPI_ID",          "")
+    # ─── NEW: Fetch dynamic profile ───────────────────────────────────────
+    profile = BusinessProfile.query.filter_by(owner_id=bill.owner_id).first()
+
+    company_name    = profile.business_name if profile and profile.business_name else app.config.get("COMPANY_NAME", "InvoiceFlow")
+    company_address = profile.address if profile and profile.address else app.config.get("COMPANY_ADDRESS", "")
+    company_phone   = profile.phone if profile and profile.phone else app.config.get("COMPANY_PHONE", "")
+    company_email   = profile.email if profile and profile.email else app.config.get("COMPANY_EMAIL", "")
+    company_gstin   = profile.gst_number if profile and profile.gst_number else app.config.get("COMPANY_GSTIN", "")
+    upi_id          = profile.upi_id if profile and profile.upi_id else app.config.get("UPI_ID", "")
+    company_logo    = app.config.get("COMPANY_LOGO", "")
+    # ──────────────────────────────────────────────────────────────────────
 
     W = A4[0] - 40 * mm
 

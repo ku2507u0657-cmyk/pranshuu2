@@ -239,7 +239,6 @@ def settings_profile():
         profile.owner_name = request.form.get("owner_name")
         profile.upi_id = request.form.get("upi_id")
         profile.gst_number = request.form.get("gst_number")
-        profile.address = request.form.get("address")
         profile.phone = request.form.get("phone")
         profile.email = request.form.get("email")
 
