@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_upi_qr_bytes(upi_id: str, payee_name: str,
-                        amount: float, note: str = "") -> bytes:
+                       amount: float, note: str = "") -> bytes:
     """
     Generate a UPI payment QR code and return raw PNG bytes.
 
@@ -52,7 +52,7 @@ def build_upi_qr_bytes(upi_id: str, payee_name: str,
         upi_url = "upi://pay?" + urlencode(params, quote_via=quote)
 
         qr = qrcode.QRCode(
-            version        = 3,
+            version          = 3,
             error_correction = qrcode.constants.ERROR_CORRECT_M,
             box_size       = 6,
             border         = 2,
@@ -77,24 +77,3 @@ def build_upi_qr_bytes(upi_id: str, payee_name: str,
     except Exception as exc:
         logger.error("UPI QR generation failed: %s", exc)
         return b""
-
-
-def build_upi_qr_for_invoice(invoice, app) -> bytes:
-    """
-    Convenience wrapper — reads UPI config from app and generates QR
-    for the given invoice's total amount.
-    """
-    upi_id     = app.config.get("UPI_ID", "")
-    payee_name = app.config.get("UPI_PAYEE_NAME",
-                                app.config.get("COMPANY_NAME", "InvoiceFlow"))
-
-    if not upi_id:
-        logger.info("UPI_ID not configured — skipping QR code.")
-        return b""
-
-    return build_upi_qr_bytes(
-        upi_id     = upi_id,
-        payee_name = payee_name,
-        amount     = float(invoice.total),
-        note       = invoice.invoice_number,
-    )
