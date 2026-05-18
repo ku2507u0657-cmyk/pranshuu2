@@ -57,10 +57,10 @@
         <i class="bi bi-receipt"></i>
         <span>Bills</span>
       </a>
-      <a href="#" class="nav-link-item disabled">
+      <a href="{{ url_for('reports.index') }}"
+         class="nav-link-item {% if request.blueprint == 'reports' %}active{% endif %}">
         <i class="bi bi-bar-chart-line"></i>
         <span>Reports</span>
-        <span class="badge-soon">Soon</span>
       </a>
     </div>
 

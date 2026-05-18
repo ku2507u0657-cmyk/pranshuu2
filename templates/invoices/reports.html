@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Reports &mdash; {{ app_name }}{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block head %}
+<style>
+  .report-filter-card {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+    padding: 16px;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+
+  .report-filter-group {
+    flex: 1;
+    min-width: 190px;
+    max-width: 260px;
+  }
+
+  .report-filter-actions {
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .kpi-card.accent-left.blue::before { background: var(--accent); }
+  .kpi-icon.blue { background: var(--accent-2); color: var(--accent); }
+
+  .reports-grid {
+    grid-template-columns: 1fr 320px;
+  }
+
+  .reports-lower-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .report-row-note {
+    display: block;
+    margin-top: 6px;
+    color: var(--ink-3);
+    font-size: .76rem;
+  }
+
+  .report-total-row {
+    background: var(--bg);
+  }
+
+  .report-export-list {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .report-export-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+
+  .report-export-row i {
+    color: var(--accent);
+    font-size: 1rem;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .report-export-row strong {
+    display: block;
+    font-size: .82rem;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+
+  .report-export-row span {
+    display: block;
+    font-size: .76rem;
+    color: var(--ink-3);
+    line-height: 1.45;
+  }
+
+  @media (max-width: 1024px) {
+    .reports-grid,
+    .reports-lower-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .report-filter-card {
+      align-items: stretch;
+    }
+
+    .report-filter-group {
+      max-width: none;
+      min-width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-heading">Financial Reports</h1>
+    <p class="page-sub">Export transactions and review GST movement for the selected period.</p>
+  </div>
+  <a class="btn-action-primary"
+     href="{{ url_for('reports.export_transactions_csv', start_date=start_date.isoformat(), end_date=end_date.isoformat()) }}">
+    <i class="bi bi-download"></i>
+    Export CSV
+  </a>
+</div>
+
+<form method="GET" action="{{ url_for('reports.index') }}" class="report-filter-card">
+  <div class="report-filter-group">
+    <label class="form-label" for="start_date">Start Date</label>
+    <div class="input-wrap">
+      <i class="bi bi-calendar3 input-icon"></i>
+      <input id="start_date"
+             class="form-field"
+             type="date"
+             name="start_date"
+             value="{{ start_date.isoformat() }}">
+    </div>
+  </div>
+
+  <div class="report-filter-group">
+    <label class="form-label" for="end_date">End Date</label>
+    <div class="input-wrap">
+      <i class="bi bi-calendar-check input-icon"></i>
+      <input id="end_date"
+             class="form-field"
+             type="date"
+             name="end_date"
+             value="{{ end_date.isoformat() }}">
+    </div>
+  </div>
+
+  <div class="report-filter-actions">
+    <button type="submit" class="btn-submit">
+      <i class="bi bi-funnel"></i>
+      Apply
+    </button>
+  </div>
+</form>
+
+<div class="kpi-grid">
+  <div class="kpi-card accent-left green">
+    <div class="kpi-top">
+      <div class="kpi-icon green"><i class="bi bi-receipt-cutoff"></i></div>
+      <span class="kpi-badge neutral">{{ gst_summary.invoice_count }} invoices</span>
+    </div>
+    <div class="kpi-value">{{ format_money(gst_summary.gst_collected) }}</div>
+    <div class="kpi-label">GST Collected</div>
+    <div class="kpi-sub">Tax charged on outgoing invoices</div>
+  </div>
+
+  <div class="kpi-card accent-left red">
+    <div class="kpi-top">
+      <div class="kpi-icon red"><i class="bi bi-bag-check"></i></div>
+      <span class="kpi-badge neutral">{{ gst_summary.bill_count }} bills</span>
+    </div>
+    <div class="kpi-value">{{ format_money(gst_summary.gst_paid) }}</div>
+    <div class="kpi-label">GST Paid</div>
+    <div class="kpi-sub">Input tax credit from bills</div>
+  </div>
+
+  <div class="kpi-card accent-left {{ 'amber' if gst_summary.net_gst >= 0 else 'teal' }}">
+    <div class="kpi-top">
+      <div class="kpi-icon {{ 'amber' if gst_summary.net_gst >= 0 else 'teal' }}">
+        <i class="bi bi-calculator"></i>
+      </div>
+      <span class="kpi-badge {{ 'down' if gst_summary.net_gst >= 0 else 'up' }}">
+        {{ gst_summary.position_label }}
+      </span>
+    </div>
+    <div class="kpi-value">{{ format_money(gst_summary.net_gst|abs) }}</div>
+    <div class="kpi-label">Net GST Position</div>
+    <div class="kpi-sub">Collected minus paid for this period</div>
+  </div>
+
+  <div class="kpi-card accent-left blue">
+    <div class="kpi-top">
+      <div class="kpi-icon blue"><i class="bi bi-filetype-csv"></i></div>
+      <span class="kpi-badge neutral">CSV</span>
+    </div>
+    <div class="kpi-value">{{ gst_summary.invoice_count + gst_summary.bill_count }}</div>
+    <div class="kpi-label">Transactions</div>
+    <div class="kpi-sub">Rows included in the export</div>
+  </div>
+</div>
+
+<div class="chart-row reports-grid">
+  <div class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">GST Summary Report</h2>
+        <p class="panel-subtitle">Comparison for {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}</p>
+      </div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th class="text-right">Taxable Value</th>
+          <th class="text-right">GST</th>
+          <th class="text-right">Gross Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <span class="status-pill status-paid">Invoices</span>
+            <span class="report-row-note">GST collected from clients</span>
+          </td>
+          <td class="text-right mono-num">{{ format_money(gst_summary.invoice_subtotal) }}</td>
+          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.gst_collected) }}</strong></td>
+          <td class="text-right mono-num">{{ format_money(gst_summary.invoice_total) }}</td>
+        </tr>
+        <tr>
+          <td>
+            <span class="status-pill status-overdue">Bills</span>
+            <span class="report-row-note">GST paid on expenses</span>
+          </td>
+          <td class="text-right mono-num">{{ format_money(gst_summary.bill_subtotal) }}</td>
+          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.gst_paid) }}</strong></td>
+          <td class="text-right mono-num">{{ format_money(gst_summary.bill_total) }}</td>
+        </tr>
+        <tr class="report-total-row">
+          <td>
+            <span class="inv-number">{{ gst_summary.position_label }}</span>
+          </td>
+          <td class="text-right mono-num muted">GST collected - GST paid</td>
+          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.net_gst|abs) }}</strong></td>
+          <td class="text-right mono-num muted">Period result</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Export Details</h2>
+        <p class="panel-subtitle">What the CSV includes</p>
+      </div>
+    </div>
+    <div class="report-export-list">
+      <div class="report-export-row">
+        <i class="bi bi-arrow-down-left-circle"></i>
+        <div>
+          <strong>Invoices</strong>
+          <span>Client, status, subtotal, GST, total, due date, paid date.</span>
+        </div>
+      </div>
+      <div class="report-export-row">
+        <i class="bi bi-arrow-up-right-circle"></i>
+        <div>
+          <strong>Bills</strong>
+          <span>Vendor/client, status, subtotal, GST, total, due date, paid date.</span>
+        </div>
+      </div>
+      <div class="report-export-row">
+        <i class="bi bi-plus-slash-minus"></i>
+        <div>
+          <strong>Signed totals</strong>
+          <span>Invoices are positive. Bills are negative for cash-flow analysis.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lower-grid reports-lower-grid">
+  <div class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Recent Invoice GST</h2>
+        <p class="panel-subtitle">Latest invoices in the selected period</p>
+      </div>
+    </div>
+    {% if recent_invoices %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Client</th>
+          <th class="text-right">GST</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in recent_invoices %}
+        <tr>
+          <td><span class="inv-number">{{ invoice.invoice_number }}</span></td>
+          <td>{{ invoice.client.name if invoice.client else 'Unknown' }}</td>
+          <td class="text-right mono-num">{{ invoice.gst_display }}</td>
+          <td class="text-right mono-num"><strong>{{ invoice.total_display }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="bi bi-file-earmark-text"></i></div>
+      <p class="empty-title">No invoices in this period</p>
+      <p class="empty-sub">Try widening the date range.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Recent Bill GST</h2>
+        <p class="panel-subtitle">Latest bills in the selected period</p>
+      </div>
+    </div>
+    {% if recent_bills %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Bill</th>
+          <th>Vendor</th>
+          <th class="text-right">GST</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bill in recent_bills %}
+        <tr>
+          <td><span class="inv-number">{{ bill.bill_number }}</span></td>
+          <td>{{ bill.client.name if bill.client else 'Unknown' }}</td>
+          <td class="text-right mono-num">{{ bill.total_gst_display }}</td>
+          <td class="text-right mono-num"><strong>{{ bill.grand_total_display }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="bi bi-receipt"></i></div>
+      <p class="empty-title">No bills in this period</p>
+      <p class="empty-sub">Try widening the date range.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
