@@ -1,18 +1,18 @@
 """
-utils/email.py — Email delivery via smtplib for InvoiceFlow.
+utils/email.py — Email delivery via Brevo HTTP API for InvoiceFlow.
 
 Public API
 ----------
     send_invoice_email(invoice, app)               -> None
     send_reminder_email(invoice, app, days_overdue) -> None
+    send_bill_email(bill, app)                     -> None
 """
 
 import logging
-import smtplib
-import ssl
-from email.mime.application import MIMEApplication
-from email.mime.multipart   import MIMEMultipart
-from email.mime.text        import MIMEText
+import base64
+import os
+import requests
+from requests.exceptions import RequestException
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,6 @@ def send_invoice_email(invoice, app) -> None:
     recipient = _resolve_recipient(invoice, cfg)
 
     # Build PDF bytes
-    from utils.pdf import build_invoice_pdf_bytes
     pdf_bytes = _safe_pdf(invoice, app)
 
     subject    = f"Invoice {invoice.invoice_number} from {company_name}"
@@ -41,18 +40,18 @@ def send_invoice_email(invoice, app) -> None:
                                   invoice=invoice, company_name=company_name)
     plain_body = _plain_invoice(invoice, company_name)
 
-    msg = _assemble(
-        subject      = subject,
-        from_name    = cfg.get("MAIL_FROM_NAME",    company_name),
-        from_address = cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
-        recipient    = recipient,
-        plain_body   = plain_body,
-        html_body    = html_body,
-        pdf_bytes    = pdf_bytes,
-        pdf_filename = f"{invoice.invoice_number}.pdf",
+    _brevo_api_send(
+        subject=subject,
+        from_name=cfg.get("MAIL_FROM_NAME", company_name),
+        from_address=cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
+        recipient_email=recipient,
+        recipient_name=invoice.client.name,
+        html_body=html_body,
+        plain_body=plain_body,
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"{invoice.invoice_number}.pdf",
     )
-    _smtp_send(msg, recipient, cfg)
-    logger.info("Invoice email sent: %s -> %s", invoice.invoice_number, recipient)
+    logger.info("Invoice email sent via Brevo API: %s -> %s", invoice.invoice_number, recipient)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -75,19 +74,63 @@ def send_reminder_email(invoice, app, days_overdue: int = 0) -> None:
                                   days_overdue=days_overdue)
     plain_body = _plain_reminder(invoice, company_name, days_overdue)
 
-    msg = _assemble(
-        subject      = subject,
-        from_name    = cfg.get("MAIL_FROM_NAME",    company_name),
-        from_address = cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
-        recipient    = recipient,
-        plain_body   = plain_body,
-        html_body    = html_body,
-        pdf_bytes    = pdf_bytes,
-        pdf_filename = f"{invoice.invoice_number}.pdf",
+    _brevo_api_send(
+        subject=subject,
+        from_name=cfg.get("MAIL_FROM_NAME", company_name),
+        from_address=cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
+        recipient_email=recipient,
+        recipient_name=invoice.client.name,
+        html_body=html_body,
+        plain_body=plain_body,
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"{invoice.invoice_number}.pdf",
     )
-    _smtp_send(msg, recipient, cfg)
-    logger.info("Reminder sent: %s -> %s (%d days overdue)",
+    logger.info("Reminder sent via Brevo API: %s -> %s (%d days overdue)",
                 invoice.invoice_number, recipient, days_overdue)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Public: send itemized bill email
+# ─────────────────────────────────────────────────────────────
+
+def send_bill_email(bill, app) -> None:
+    cfg          = app.config
+    company_name = cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
+
+    _guard_enabled(cfg)
+    recipient = bill.client.email or cfg.get("MAIL_FALLBACK_RECIPIENT")
+    if not recipient:
+        raise EmailError(
+            f"No recipient for {bill.bill_number}: "
+            "client has no email and MAIL_FALLBACK_RECIPIENT is not set."
+        )
+
+    # Build PDF bytes
+    pdf_bytes = _safe_pdf_bill(bill, app)
+
+    subject    = f"Bill {bill.bill_number} from {company_name}"
+    plain_body = _plain_bill_body(bill, company_name)
+
+    try:
+        html_body = _render_template(app, "emails/bill_email.html",
+                                     bill=bill, company_name=company_name)
+    except Exception as exc:
+        logger.error("Bill email template render failed: %s", exc)
+        escaped = plain_body.replace("\n", "<br/>")
+        html_body = f"<html><body style='font-family:sans-serif;font-size:14px'>{escaped}</body></html>"
+
+    _brevo_api_send(
+        subject=subject,
+        from_name=cfg.get("MAIL_FROM_NAME", company_name),
+        from_address=cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
+        recipient_email=recipient,
+        recipient_name=bill.client.name,
+        html_body=html_body,
+        plain_body=plain_body,
+        pdf_bytes=pdf_bytes,
+        pdf_filename=f"{bill.bill_number}.pdf",
+    )
+    logger.info("Bill email sent via Brevo API: %s -> %s", bill.bill_number, recipient)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -110,7 +153,6 @@ def _resolve_recipient(invoice, cfg):
 
 
 def _safe_pdf(invoice, app):
-    """Try to build PDF; return empty bytes on failure (don't block email)."""
     try:
         from utils.pdf import build_invoice_pdf_bytes
         return build_invoice_pdf_bytes(invoice, app)
@@ -119,60 +161,59 @@ def _safe_pdf(invoice, app):
         return b""
 
 
+def _safe_pdf_bill(bill, app):
+    try:
+        from utils.bill_pdf import build_bill_pdf_bytes
+        return build_bill_pdf_bytes(bill, app)
+    except Exception as exc:
+        logger.error("Bill PDF build failed for email: %s", exc)
+        return b""
+
+
 def _render_template(app, path, **ctx):
     with app.app_context():
         return app.jinja_env.get_template(path).render(**ctx)
 
 
-def _assemble(subject, from_name, from_address, recipient,
-              plain_body, html_body, pdf_bytes, pdf_filename):
-    root = MIMEMultipart("mixed")
-    root["Subject"] = subject
-    root["From"]    = f"{from_name} <{from_address}>"
-    root["To"]      = recipient
+def _brevo_api_send(subject, from_name, from_address, recipient_email, recipient_name, html_body, plain_body, pdf_bytes, pdf_filename):
+    """
+    Sends email via Brevo's HTTP API (bypassing Render's SMTP block).
+    """
+    api_key = os.environ.get("BREVO_API_KEY")
+    if not api_key:
+        raise EmailError("BREVO_API_KEY environment variable is not set on Render.")
 
-    alt = MIMEMultipart("alternative")
-    alt.attach(MIMEText(plain_body, "plain", "utf-8"))
-    alt.attach(MIMEText(html_body,  "html",  "utf-8"))
-    root.attach(alt)
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
 
+    payload = {
+        "sender": {"name": from_name, "email": from_address},
+        "to": [{"email": recipient_email, "name": recipient_name}],
+        "subject": subject,
+        "htmlContent": html_body,
+        "textContent": plain_body
+    }
+
+    # Attach PDF if it exists
     if pdf_bytes:
-        part = MIMEApplication(pdf_bytes, _subtype="pdf")
-        part.add_header("Content-Disposition", "attachment", filename=pdf_filename)
-        root.attach(part)
-
-    return root
-
-
-def _smtp_send(msg, recipient, cfg):
-    username = cfg.get("MAIL_USERNAME")
-    password = cfg.get("MAIL_PASSWORD")
-    if not username or not password:
-        raise EmailError("MAIL_USERNAME and MAIL_PASSWORD must both be set.")
-
-    server  = cfg.get("MAIL_SERVER",  "smtp.gmail.com")
-    port    = cfg.get("MAIL_PORT",    587)
-    use_tls = cfg.get("MAIL_USE_TLS", True)
+        encoded_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        payload["attachment"] = [
+            {
+                "content": encoded_pdf,
+                "name": pdf_filename
+            }
+        ]
 
     try:
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP(server, port, timeout=15) as smtp:
-            smtp.ehlo()
-            if use_tls:
-                smtp.starttls(context=ctx)
-                smtp.ehlo()
-            smtp.login(username, password)
-            smtp.sendmail(
-                from_addr = cfg.get("MAIL_FROM_ADDRESS", username),
-                to_addrs  = [recipient],
-                msg       = msg.as_string(),
-            )
-    except smtplib.SMTPAuthenticationError as exc:
-        raise EmailError("SMTP authentication failed. Check credentials.") from exc
-    except smtplib.SMTPException as exc:
-        raise EmailError(f"SMTP error: {exc}") from exc
-    except OSError as exc:
-        raise EmailError(f"Cannot connect to {server}:{port} — {exc}") from exc
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        response.raise_for_status() # Raise exception for 4XX/5XX errors
+    except RequestException as exc:
+        err_detail = exc.response.text if exc.response else str(exc)
+        raise EmailError(f"Brevo API Error: {err_detail}") from exc
 
 
 # ─────────────────────────────────────────────────────────────
@@ -203,66 +244,6 @@ def _plain_reminder(invoice, company_name, days_overdue):
         f"Please arrange payment immediately. Quote {invoice.invoice_number} as reference.\n\n"
         f"Regards,\n{company_name}"
     )
-
-
-# ─────────────────────────────────────────────────────────────
-#  Public: send itemized bill email
-# ─────────────────────────────────────────────────────────────
-
-def send_bill_email(bill, app) -> None:
-    """
-    Send itemized bill email with HTML template + PDF attachment.
-    Mirrors send_invoice_email exactly.
-    """
-    cfg          = app.config
-    company_name = cfg.get("COMPANY_NAME", cfg.get("APP_NAME", "InvoiceFlow"))
-
-    _guard_enabled(cfg)
-    recipient = bill.client.email or cfg.get("MAIL_FALLBACK_RECIPIENT")
-    if not recipient:
-        raise EmailError(
-            f"No recipient for {bill.bill_number}: "
-            "client has no email and MAIL_FALLBACK_RECIPIENT is not set."
-        )
-
-    # Build PDF bytes
-    pdf_bytes = _safe_pdf_bill(bill, app)
-
-    subject    = f"Bill {bill.bill_number} from {company_name}"
-    plain_body = _plain_bill_body(bill, company_name)
-
-    # Render HTML template — must succeed for a good email
-    try:
-        html_body = _render_template(app, "emails/bill_email.html",
-                                     bill=bill, company_name=company_name)
-    except Exception as exc:
-        logger.error("Bill email template render failed: %s", exc)
-        # Fall back to a basic HTML wrapper around the plain text
-        escaped = plain_body.replace("\n", "<br/>")
-        html_body = f"<html><body style='font-family:sans-serif;font-size:14px'>{escaped}</body></html>"
-
-    msg = _assemble(
-        subject      = subject,
-        from_name    = cfg.get("MAIL_FROM_NAME",    company_name),
-        from_address = cfg.get("MAIL_FROM_ADDRESS", cfg.get("MAIL_USERNAME", "")),
-        recipient    = recipient,
-        plain_body   = plain_body,
-        html_body    = html_body,
-        pdf_bytes    = pdf_bytes,
-        pdf_filename = f"{bill.bill_number}.pdf",
-    )
-    _smtp_send(msg, recipient, cfg)
-    logger.info("Bill email sent: %s -> %s", bill.bill_number, recipient)
-
-
-def _safe_pdf_bill(bill, app):
-    """Build bill PDF bytes, log and return empty on failure."""
-    try:
-        from utils.bill_pdf import build_bill_pdf_bytes
-        return build_bill_pdf_bytes(bill, app)
-    except Exception as exc:
-        logger.error("Bill PDF build failed for email: %s", exc)
-        return b""
 
 
 def _plain_bill_body(bill, company_name):
