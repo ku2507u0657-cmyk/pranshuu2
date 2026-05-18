@@ -101,7 +101,7 @@ def build_and_save_invoice_pdf(invoice, app):
 
 def _render(invoice, app) -> bytes:
     """Core render function — builds the PDF and returns bytes."""
-    from utils.qr import build_upi_qr_for_invoice
+    from utils.qr import build_upi_qr_bytes
     from models import BusinessProfile
 
     buf    = io.BytesIO()

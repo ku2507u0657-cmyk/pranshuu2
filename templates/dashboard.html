@@ -125,7 +125,7 @@
     <div class="dash-panel" style="margin-bottom: 0;">
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">Unpaid Invoices (Money In)</h2>
+          <h2 class="panel-title">Unpaid Invoices</h2>
           <p class="panel-subtitle">
             {{ stats.unpaid_count }} pending &nbsp;&bull;&nbsp;
             ₹{{ "{:,.2f}".format(stats.unpaid_total) }} outstanding
@@ -201,7 +201,7 @@
     <div class="dash-panel" style="margin-bottom: 0;">
       <div class="panel-header" style="border-bottom-color: var(--red-light, #fee2e2);">
         <div>
-          <h2 class="panel-title">Unpaid Bills (Money Out)</h2>
+          <h2 class="panel-title">Unpaid Bills</h2>
           <p class="panel-subtitle">Action required on these expenses</p>
         </div>
         <a href="{{ url_for('bills.list_bills', status='unpaid') }}" class="panel-action">View all &rarr;</a>

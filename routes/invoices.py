@@ -71,26 +71,46 @@ def list_invoices():
 def view_invoice(invoice_id):
     invoice = _owned_invoice(invoice_id)
 
+    # 1. Fetch dynamic business profile
+    from models import BusinessProfile
+    profile = BusinessProfile.query.filter_by(owner_id=invoice.owner_id).first()
+
+    company_name    = profile.business_name if profile and profile.business_name else current_app.config.get("COMPANY_NAME", "InvoiceFlow")
+    company_address = profile.address if profile and profile.address else current_app.config.get("COMPANY_ADDRESS", "")
+    company_phone   = profile.phone if profile and profile.phone else current_app.config.get("COMPANY_PHONE", "")
+    company_email   = profile.email if profile and profile.email else current_app.config.get("COMPANY_EMAIL", "")
+    company_gstin   = profile.gst_number if profile and profile.gst_number else current_app.config.get("COMPANY_GSTIN", "")
+    upi_id          = profile.upi_id if profile and profile.upi_id else current_app.config.get("UPI_ID", "")
+
+    # 2. Generate the QR code using the new function
     qr_b64 = ""
     try:
         import base64
-        from utils.qr import build_upi_qr_for_invoice
-        qr_bytes = build_upi_qr_for_invoice(invoice, current_app._get_current_object())
-        if qr_bytes:
-            qr_b64 = base64.b64encode(qr_bytes).decode()
+        from utils.qr import build_upi_qr_bytes
+        
+        if upi_id:
+            qr_bytes = build_upi_qr_bytes(
+                upi_id=upi_id,
+                payee_name=company_name,
+                amount=float(invoice.total),
+                note=invoice.invoice_number
+            )
+            if qr_bytes:
+                qr_b64 = base64.b64encode(qr_bytes).decode()
     except Exception:
         pass
 
+    # 3. Pass dynamic values to the template
     return render_template("invoices/view.html",
         invoice         = invoice,
         qr_b64          = qr_b64,
-        upi_id          = current_app.config.get("UPI_ID", ""),
+        upi_id          = upi_id,
         app_name        = current_app.config.get("APP_NAME", "InvoiceFlow"),
-        company_name    = current_app.config.get("COMPANY_NAME", ""),
-        company_address = current_app.config.get("COMPANY_ADDRESS", ""),
-        company_phone   = current_app.config.get("COMPANY_PHONE", ""),
-        company_email   = current_app.config.get("COMPANY_EMAIL", ""),
-        company_gstin   = current_app.config.get("COMPANY_GSTIN", ""),
+        company_name    = company_name,
+        company_address = company_address,
+        company_phone   = company_phone,
+        company_email   = company_email,
+        company_gstin   = company_gstin,
     )
 
 
