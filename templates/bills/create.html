@@ -4,7 +4,7 @@
 
 {% block content %}
 <style>
-/* Sleek Segmented Control for Money In / Out */
+/* Sleek Segmented Control for Money In / Out and Client Type */
 .transaction-toggle {
   display: inline-flex;
   background: var(--bg, #f4f4f5);
@@ -32,6 +32,7 @@
   color: var(--ink-3, #71717a);
   transition: all 0.2s ease;
 }
+/* Specific Colors for Checked States */
 .transaction-toggle input[type="radio"]:checked + .toggle-pill.money-in {
   background: #dcfce7;
   color: #166534;
@@ -41,6 +42,11 @@
   background: #fee2e2;
   color: #991b1b;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.transaction-toggle input[type="radio"]:checked + .toggle-pill.neutral-pill {
+  background: #ffffff;
+  color: var(--ink, #111);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 </style>
 
@@ -83,31 +89,71 @@
         </div>
       </div>
 
-      <div class="form-row two-col">
-        <div class="form-group">
-          <label class="form-label required" for="client_id">Vendor / Client</label>
-          <div class="input-wrap">
-            <i class="bi bi-person input-icon"></i>
-            <select id="client_id" name="client_id" class="form-field form-select" required>
-              <option value="">— Select a contact —</option>
-              {% for c in clients %}
-              <option value="{{ c.id }}"
-                {{ 'selected' if (preselected == c.id or form.get('client_id','') == c.id|string) }}>
-                {{ c.name }} {% if c.phone %}({{ c.phone }}){% endif %}
-              </option>
-              {% endfor %}
-            </select>
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label class="form-label required">Vendor / Client Details</label>
+          
+          <div class="transaction-toggle" style="margin-bottom: 12px;">
+            <label>
+              <input type="radio" name="client_type" value="existing" checked onchange="toggleClientMode()">
+              <span class="toggle-pill neutral-pill">
+                <i class="bi bi-person-lines-fill"></i> Existing Contact
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="client_type" value="one-time" onchange="toggleClientMode()">
+              <span class="toggle-pill neutral-pill">
+                <i class="bi bi-person-plus-fill"></i> One-Time Contact
+              </span>
+            </label>
           </div>
+
+          <div id="existing-client-group">
+            <div class="input-wrap">
+              <i class="bi bi-person input-icon"></i>
+              <select id="client_id" name="client_id" class="form-field form-select" required>
+                <option value="">— Select a contact —</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}"
+                  {{ 'selected' if (preselected == c.id or form.get('client_id','') == c.id|string) }}>
+                  {{ c.name }} {% if c.phone %}({{ c.phone }}){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div id="one-time-client-group" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
+              <div class="form-group" style="grid-column: 1 / -1; margin: 0;">
+                <label class="form-label required" style="font-size: 0.8rem;">Vendor / Business Name</label>
+                <input type="text" id="guest_name" name="guest_name" class="form-field" placeholder="e.g. Raghuvanshi Timber Mart">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-size: 0.8rem;">Email (for PDF sending)</label>
+                <input type="email" id="guest_email" name="guest_email" class="form-field" placeholder="vendor@email.com">
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-size: 0.8rem;">Phone Number</label>
+                <input type="text" id="guest_phone" name="guest_phone" class="form-field" placeholder="+91 98765 43210">
+              </div>
+            </div>
+          </div>
+
         </div>
-        <div class="form-group">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group full-width">
           <label class="form-label" for="due_date">Due Date</label>
-          <div class="input-wrap">
+          <div class="input-wrap" style="max-width: 200px;">
             <i class="bi bi-calendar3 input-icon"></i>
             <input type="date" id="due_date" name="due_date" class="form-field"
                    value="{{ form.get('due_date', default_due) }}" />
           </div>
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group full-width">
           <label class="form-label" for="notes">Bill Notes (optional)</label>
@@ -253,6 +299,32 @@
 
 {% block scripts %}
 <script>
+// ── Client Type Toggle Logic ───────────────────────────────────
+function toggleClientMode() {
+  const mode = document.querySelector('input[name="client_type"]:checked').value;
+  const existingGrp = document.getElementById('existing-client-group');
+  const oneTimeGrp = document.getElementById('one-time-client-group');
+  
+  const clientIdInput = document.getElementById('client_id');
+  const guestNameInput = document.getElementById('guest_name');
+
+  if (mode === 'one-time') {
+    existingGrp.style.display = 'none';
+    oneTimeGrp.style.display = 'block';
+    
+    // Swap required attributes so HTML validation doesn't block submission
+    clientIdInput.removeAttribute('required');
+    guestNameInput.setAttribute('required', 'true');
+  } else {
+    existingGrp.style.display = 'block';
+    oneTimeGrp.style.display = 'none';
+    
+    guestNameInput.removeAttribute('required');
+    clientIdInput.setAttribute('required', 'true');
+  }
+}
+
+// ── Math & Row Logic ───────────────────────────────────────────
 const GST_SLABS = [0, 5, 12, 18, 28];
 
 function fmt(n) {
@@ -323,6 +395,7 @@ document.getElementById('billForm').addEventListener('submit', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+  toggleClientMode(); // Initialize the form state
   addRow(); addRow(); addRow();
 });
 </script>

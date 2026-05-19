@@ -5,7 +5,6 @@
 
 {% block content %}
 
-<!-- ── Page header ─────────────────────────────────────────── -->
 <div class="page-header">
   <div class="page-header-left">
     <h1 class="page-heading">Clients</h1>
@@ -19,7 +18,6 @@
   </a>
 </div>
 
-<!-- ── Search bar ──────────────────────────────────────────── -->
 <form method="GET" action="{{ url_for('clients.list_clients') }}" class="search-bar-form">
   <div class="search-bar-wrap">
     <i class="bi bi-search search-icon"></i>
@@ -40,7 +38,6 @@
   <button type="submit" class="btn-search">Search</button>
 </form>
 
-<!-- ── Client table ────────────────────────────────────────── -->
 {% if clients %}
 <div class="table-card">
   <table class="data-table">
@@ -59,7 +56,6 @@
       {% for client in clients %}
       <tr class="table-row">
 
-        <!-- Name + avatar -->
         <td>
           <div class="client-name-cell">
             <div class="client-avatar">{{ client.initials }}</div>
@@ -67,7 +63,6 @@
           </div>
         </td>
 
-        <!-- Email -->
         <td>
           {% if client.email %}
             <a href="mailto:{{ client.email }}" class="table-link">{{ client.email }}</a>
@@ -76,7 +71,6 @@
           {% endif %}
         </td>
 
-        <!-- Phone -->
         <td>
           {% if client.phone %}
             <a href="tel:{{ client.phone }}" class="table-link">{{ client.phone }}</a>
@@ -85,7 +79,6 @@
           {% endif %}
         </td>
 
-        <!-- GST -->
         <td>
           {% if client.gst_number %}
             <code class="gst-code">{{ client.gst_number }}</code>
@@ -94,7 +87,6 @@
           {% endif %}
         </td>
 
-        <!-- Monthly fee -->
         <td class="text-right">
           {% if client.monthly_fee %}
             <span class="fee-badge">{{ client.monthly_fee_display }}</span>
@@ -103,28 +95,28 @@
           {% endif %}
         </td>
 
-        <!-- Date -->
         <td class="table-date">
           {{ client.created_at.strftime('%d %b %Y') }}
         </td>
 
-        <!-- Actions -->
         <td class="text-center">
           <div class="row-actions">
+            
+            <a href="{{ url_for('invoices.list_invoices', q=client.name) }}"
+               class="row-btn" title="View Invoices" style="color:var(--blue)">
+              <i class="bi bi-file-earmark-text"></i>
+            </a>
+
             <a href="{{ url_for('bills.client_bills', client_id=client.id) }}"
                class="row-btn" title="View Bills" style="color:var(--teal)">
               <i class="bi bi-receipt"></i>
             </a>
-            <a href="{{ url_for('bills.create_bill', client_id=client.id) }}"
-               class="row-btn" title="New Bill" style="color:var(--purple)">
-              <i class="bi bi-plus-lg"></i>
-            </a>
+            
             <a href="{{ url_for('clients.edit_client', client_id=client.id) }}"
                class="row-btn edit" title="Edit client">
               <i class="bi bi-pencil"></i>
             </a>
 
-            <!-- Delete — POST form inside a confirm dialog -->
             <button type="button"
                     class="row-btn delete"
                     title="Delete client"
@@ -140,7 +132,6 @@
   </table>
 </div>
 
-<!-- ── Pagination ──────────────────────────────────────────── -->
 {% if pagination.pages > 1 %}
 <div class="pagination-row">
   <span class="pagination-info">
@@ -174,7 +165,6 @@
 {% endif %}
 
 {% else %}
-<!-- ── Empty state ─────────────────────────────────────────── -->
 <div class="dash-panel">
   <div class="empty-state">
     <div class="empty-icon">
@@ -201,7 +191,6 @@
 </div>
 {% endif %}
 
-<!-- ── Delete confirmation modal ───────────────────────────── -->
 <div id="deleteModal" class="modal-backdrop" style="display:none">
   <div class="modal-box">
     <div class="modal-icon danger"><i class="bi bi-exclamation-triangle-fill"></i></div>

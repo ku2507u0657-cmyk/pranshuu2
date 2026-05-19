@@ -122,26 +122,54 @@ def create_invoice():
                .order_by(Client.name.asc()).all())
 
     if request.method == "POST":
-        client_id  = request.form.get("client_id", "").strip()
+        # --- NEW: Detect Client Type ---
+        client_type = request.form.get("client_type", "existing").strip()
+        
         amount_raw = request.form.get("amount",    "").strip()
         due_date_s = request.form.get("due_date",  "").strip()
         notes      = request.form.get("notes",     "").strip()
         gst_rate_s = request.form.get("gst_rate",  "18").strip()
-        
-        # --- NEW: Get Transaction Type from Toggle ---
         transaction_type = request.form.get("transaction_type", "in").strip()
 
         errors = []
-        client = None
+        client_id = None
 
-        if not client_id:
-            errors.append("Please select a client.")
+        # --- NEW: Process Based on Client Type ---
+        if client_type == "one-time":
+            guest_name = request.form.get("guest_name", "").strip()
+            guest_email = request.form.get("guest_email", "").strip()
+            guest_phone = request.form.get("guest_phone", "").strip()
+
+            if not guest_name:
+                errors.append("Client Name is required for one-time billing.")
+            else:
+                try:
+                    # Create the shadow client record instantly
+                    new_client = Client(
+                        owner_id=current_user.id,
+                        name=guest_name,
+                        email=guest_email or None,
+                        phone=guest_phone or None,
+                        is_active=True
+                    )
+                    db.session.add(new_client)
+                    db.session.flush() # Flushes to DB to instantly generate new_client.id
+                    client_id = new_client.id
+                except Exception as e:
+                    errors.append(f"Failed to create one-time client profile: {str(e)}")
         else:
-            client = Client.query.filter_by(id=int(client_id),
-                                             owner_id=current_user.id).first()
-            if not client:
-                errors.append("Client not found.")
+            # Standard dropdown selection logic
+            client_id_raw = request.form.get("client_id", "").strip()
+            if not client_id_raw:
+                errors.append("Please select a client.")
+            else:
+                client = Client.query.filter_by(id=int(client_id_raw), owner_id=current_user.id).first()
+                if not client:
+                    errors.append("Selected client not found.")
+                else:
+                    client_id = client.id
 
+        # --- Core Invoice Validations (Kept exact same) ---
         if not amount_raw:
             errors.append("Amount is required.")
         else:
@@ -175,12 +203,13 @@ def create_invoice():
                 today=date.today(),
                 app_name=current_app.config.get("APP_NAME"))
 
+        # --- Calculation and Generation (Kept exact same) ---
         gst_amount, total = Invoice.calculate_gst(amount, rate=gst_rate)
 
         invoice = Invoice(
             owner_id         = current_user.id,
             invoice_number   = Invoice.next_invoice_number(owner_id=current_user.id),
-            client_id        = int(client_id),
+            client_id        = client_id, # Uses either selection or newly created ID!
             amount           = amount,
             gst              = gst_amount,
             gst_rate         = gst_rate,
@@ -188,7 +217,7 @@ def create_invoice():
             due_date         = due_date,
             status           = InvoiceStatus.UNPAID,
             notes            = notes or None,
-            transaction_type = transaction_type # <--- Saved here!
+            transaction_type = transaction_type
         )
         db.session.add(invoice)
         db.session.flush()
@@ -202,7 +231,7 @@ def create_invoice():
             logger.error("PDF failed for %s: %s", invoice.invoice_number, exc)
 
         db.session.commit()
-        flash(f"Invoice {invoice.invoice_number} created for {invoice.client.name}.", "success")
+        flash(f"Invoice {invoice.invoice_number} generated successfully.", "success")
         _dispatch_email(invoice, app)
         return redirect(url_for("invoices.view_invoice", invoice_id=invoice.id))
 

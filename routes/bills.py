@@ -81,11 +81,11 @@ def create_bill(client_id=None):
     preselected = client_id
 
     if request.method == "POST":
-        cid     = request.form.get("client_id", "").strip()
+        # --- NEW: Detect Client Type ---
+        client_type = request.form.get("client_type", "existing").strip()
+        
         notes   = request.form.get("notes",     "").strip()
         due_raw = request.form.get("due_date",  "").strip()
-        
-        # --- NEW: Get Transaction Type from Toggle ---
         transaction_type = request.form.get("transaction_type", "out").strip()
 
         item_names   = request.form.getlist("item_name[]")
@@ -95,14 +95,40 @@ def create_bill(client_id=None):
         gst_rates    = request.form.getlist("item_gst_rate[]")
 
         errors = []
+        cid = None
 
-        if not cid:
-            errors.append("Please select a client.")
+        # --- NEW: Process Based on Client Type ---
+        if client_type == "one-time":
+            guest_name = request.form.get("guest_name", "").strip()
+            guest_email = request.form.get("guest_email", "").strip()
+            guest_phone = request.form.get("guest_phone", "").strip()
+
+            if not guest_name:
+                errors.append("Vendor/Client Name is required for one-time billing.")
+            else:
+                try:
+                    new_client = Client(
+                        owner_id=current_user.id,
+                        name=guest_name,
+                        email=guest_email or None,
+                        phone=guest_phone or None,
+                        is_active=True
+                    )
+                    db.session.add(new_client)
+                    db.session.flush() # Instantly generates the new ID
+                    cid = new_client.id
+                except Exception as e:
+                    errors.append(f"Failed to create one-time profile: {str(e)}")
         else:
-            client = Client.query.filter_by(id=int(cid),
-                                             owner_id=current_user.id).first()
-            if not client:
-                errors.append("Client not found.")
+            cid_raw = request.form.get("client_id", "").strip()
+            if not cid_raw:
+                errors.append("Please select a client/vendor.")
+            else:
+                client = Client.query.filter_by(id=int(cid_raw), owner_id=current_user.id).first()
+                if not client:
+                    errors.append("Selected client not found.")
+                else:
+                    cid = client.id
 
         valid_items = []
         for i, name in enumerate(item_names):
@@ -147,11 +173,11 @@ def create_bill(client_id=None):
         bill = Bill(
             owner_id         = current_user.id,
             bill_number      = Bill.next_bill_number(current_user.id),
-            client_id        = int(cid),
+            client_id        = cid, # Uses either selection or newly created ID
             notes            = notes or None,
             status           = BillStatus.UNPAID,
             due_date         = due_date,
-            transaction_type = transaction_type # <--- Saved here!
+            transaction_type = transaction_type 
         )
         db.session.add(bill)
         db.session.flush()
@@ -196,12 +222,18 @@ def create_bill(client_id=None):
 def view_bill(bill_id):
     bill = _owned_bill(bill_id)
 
+    # --- NEW: Fetch dynamic business profile for the Web View ---
+    from models import BusinessProfile
+    profile = BusinessProfile.query.filter_by(owner_id=bill.owner_id).first()
+    
+    company_name = profile.business_name if profile and profile.business_name else current_app.config.get("COMPANY_NAME", "InvoiceFlow")
+    upi_id       = profile.upi_id if profile and profile.upi_id else current_app.config.get("UPI_ID", "")
+
     qr_b64 = ""
     try:
         import base64
         from utils.qr import build_upi_qr_bytes
-        upi_id    = current_app.config.get("UPI_ID", "")
-        upi_payee = current_app.config.get("UPI_PAYEE_NAME", "")
+        upi_payee = company_name
         if upi_id:
             qr_bytes = build_upi_qr_bytes(upi_id, upi_payee,
                                            float(bill.grand_total), bill.bill_number)
@@ -212,8 +244,8 @@ def view_bill(bill_id):
 
     return render_template("bills/view.html",
         bill=bill, qr_b64=qr_b64,
-        upi_id       = current_app.config.get("UPI_ID", ""),
-        company_name = current_app.config.get("COMPANY_NAME", ""),
+        upi_id       = upi_id,
+        company_name = company_name,
         app_name     = current_app.config.get("APP_NAME", "InvoiceFlow"),
     )
 
