@@ -4,106 +4,216 @@
 {% block page_title %}Reports{% endblock %}
 
 {% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
-  .report-filter-card {
-    display: flex;
-    align-items: flex-end;
-    gap: 14px;
-    padding: 16px;
-    margin-bottom: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    flex-wrap: wrap;
-  }
-
-  .report-filter-group {
-    flex: 1;
-    min-width: 190px;
-    max-width: 260px;
-  }
-
-  .report-filter-actions {
-    display: flex;
-    align-items: flex-end;
-  }
-
-  .kpi-card.accent-left.blue::before { background: var(--accent); }
-  .kpi-icon.blue { background: var(--accent-2); color: var(--accent); }
-
-  .reports-grid {
-    grid-template-columns: 1fr 320px;
-  }
-
-  .reports-lower-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .report-row-note {
-    display: block;
-    margin-top: 6px;
-    color: var(--ink-3);
-    font-size: .76rem;
-  }
-
-  .report-total-row {
-    background: var(--bg);
-  }
-
-  .report-export-list {
-    padding: 12px;
+  .reports-stack {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 18px;
   }
 
-  .report-export-row {
-    display: flex;
-    align-items: flex-start;
+  .reports-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .report-card.form-card {
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .report-card-body {
+    padding: 18px 20px 20px;
+  }
+
+  .reports-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, .8fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .reports-table-wrap {
+    overflow-x: auto;
+  }
+
+  .report-inline-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-    padding: 11px 10px;
+    margin-top: 14px;
+  }
+
+  .report-inline-stat {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg);
+    padding: 10px 12px;
   }
 
-  .report-export-row i {
-    color: var(--accent);
-    font-size: 1rem;
-    margin-top: 1px;
+  .report-inline-label {
+    display: block;
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 4px;
+  }
+
+  .report-inline-value {
+    display: block;
+    font-family: 'Courier New', monospace;
+    font-size: .9rem;
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  .chart-legend .legend-dot.red {
+    background: var(--red);
+  }
+
+  .reports-chart-body {
+    padding: 18px 20px 20px;
+    min-height: 295px;
+  }
+
+  .top-client-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .top-client-row {
+    display: grid;
+    grid-template-columns: 30px 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .top-client-rank,
+  .top-client-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
   }
 
-  .report-export-row strong {
-    display: block;
-    font-size: .82rem;
+  .top-client-rank {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-weight: 800;
+    color: var(--ink-2);
+  }
+
+  .top-client-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--accent-2);
+    color: var(--accent);
+    font-size: .72rem;
+    font-weight: 800;
+  }
+
+  .top-client-name {
+    font-weight: 800;
     color: var(--ink);
-    margin-bottom: 2px;
+    font-size: .86rem;
+    line-height: 1.2;
   }
 
-  .report-export-row span {
-    display: block;
-    font-size: .76rem;
+  .top-client-meta {
     color: var(--ink-3);
-    line-height: 1.45;
+    font-size: .74rem;
+    margin-top: 2px;
   }
 
-  @media (max-width: 1024px) {
-    .reports-grid,
-    .reports-lower-grid {
+  .top-client-bar-wrap {
+    height: 7px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin-top: 7px;
+  }
+
+  .top-client-bar {
+    height: 100%;
+    min-width: 8px;
+    border-radius: inherit;
+    background: var(--green);
+  }
+
+  .top-client-amount {
+    font-family: 'Courier New', monospace;
+    font-size: .82rem;
+    font-weight: 800;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .doc-type-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--ink-2);
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .due-note {
+    display: block;
+    color: var(--red);
+    font-size: .72rem;
+    margin-top: 3px;
+  }
+
+  .report-empty {
+    padding: 36px 24px;
+  }
+
+  @media (max-width: 1100px) {
+    .reports-kpi-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .reports-main-grid {
       grid-template-columns: 1fr;
     }
   }
 
-  @media (max-width: 560px) {
-    .report-filter-card {
-      align-items: stretch;
+  @media (max-width: 640px) {
+    .reports-kpi-grid,
+    .report-inline-stats {
+      grid-template-columns: 1fr;
     }
 
-    .report-filter-group {
-      max-width: none;
-      min-width: 100%;
+    .report-card .form-card-header {
+      padding: 18px 20px;
+    }
+
+    .top-client-row {
+      grid-template-columns: 28px 32px minmax(0, 1fr);
+    }
+
+    .top-client-amount {
+      grid-column: 3;
+      justify-self: start;
+      margin-top: -4px;
+    }
+
+    .reports-table th,
+    .reports-table td {
+      display: table-cell !important;
+      white-space: nowrap;
     }
   }
 </style>
@@ -113,251 +223,277 @@
 
 <div class="page-header">
   <div>
-    <h1 class="page-heading">Financial Reports</h1>
-    <p class="page-sub">Export transactions and review GST movement for the selected period.</p>
+    <h1 class="page-heading">Reports Dashboard</h1>
+    <p class="page-sub">Dual-ledger view across invoices and itemized bills.</p>
   </div>
-  <a class="btn-action-primary"
-     href="{{ url_for('reports.export_transactions_csv', start_date=start_date.isoformat(), end_date=end_date.isoformat()) }}">
+  <a class="btn-action-primary" href="{{ url_for('reports.export') }}">
     <i class="bi bi-download"></i>
-    Export CSV
+    Export Month CSV
   </a>
 </div>
 
-<form method="GET" action="{{ url_for('reports.index') }}" class="report-filter-card">
-  <div class="report-filter-group">
-    <label class="form-label" for="start_date">Start Date</label>
-    <div class="input-wrap">
-      <i class="bi bi-calendar3 input-icon"></i>
-      <input id="start_date"
-             class="form-field"
-             type="date"
-             name="start_date"
-             value="{{ start_date.isoformat() }}">
-    </div>
-  </div>
-
-  <div class="report-filter-group">
-    <label class="form-label" for="end_date">End Date</label>
-    <div class="input-wrap">
-      <i class="bi bi-calendar-check input-icon"></i>
-      <input id="end_date"
-             class="form-field"
-             type="date"
-             name="end_date"
-             value="{{ end_date.isoformat() }}">
-    </div>
-  </div>
-
-  <div class="report-filter-actions">
-    <button type="submit" class="btn-submit">
-      <i class="bi bi-funnel"></i>
-      Apply
-    </button>
-  </div>
-</form>
-
-<div class="kpi-grid">
-  <div class="kpi-card accent-left green">
-    <div class="kpi-top">
-      <div class="kpi-icon green"><i class="bi bi-receipt-cutoff"></i></div>
-      <span class="kpi-badge neutral">{{ gst_summary.invoice_count }} invoices</span>
-    </div>
-    <div class="kpi-value">{{ format_money(gst_summary.gst_collected) }}</div>
-    <div class="kpi-label">GST Collected</div>
-    <div class="kpi-sub">Tax charged on outgoing invoices</div>
-  </div>
-
-  <div class="kpi-card accent-left red">
-    <div class="kpi-top">
-      <div class="kpi-icon red"><i class="bi bi-bag-check"></i></div>
-      <span class="kpi-badge neutral">{{ gst_summary.bill_count }} bills</span>
-    </div>
-    <div class="kpi-value">{{ format_money(gst_summary.gst_paid) }}</div>
-    <div class="kpi-label">GST Paid</div>
-    <div class="kpi-sub">Input tax credit from bills</div>
-  </div>
-
-  <div class="kpi-card accent-left {{ 'amber' if gst_summary.net_gst >= 0 else 'teal' }}">
-    <div class="kpi-top">
-      <div class="kpi-icon {{ 'amber' if gst_summary.net_gst >= 0 else 'teal' }}">
-        <i class="bi bi-calculator"></i>
+<div class="reports-stack">
+  <div class="reports-kpi-grid">
+    {% set pnl_class = 'green' if summary.net_pnl > 0 else 'red' if summary.net_pnl < 0 else 'amber' %}
+    <div class="kpi-card accent-left {{ pnl_class }}">
+      <div class="kpi-top">
+        <div class="kpi-icon {{ pnl_class }}"><i class="bi bi-graph-up-arrow"></i></div>
+        <span class="kpi-badge {{ 'up' if summary.net_pnl > 0 else 'down' if summary.net_pnl < 0 else 'neutral' }}">
+          {{ summary.net_pnl_label }}
+        </span>
       </div>
-      <span class="kpi-badge {{ 'down' if gst_summary.net_gst >= 0 else 'up' }}">
-        {{ gst_summary.position_label }}
-      </span>
+      <div class="kpi-value">{{ format_money(summary.net_pnl) }}</div>
+      <div class="kpi-label">Net P&amp;L</div>
+      <div class="kpi-sub">All-time, excluding draft and cancelled records</div>
     </div>
-    <div class="kpi-value">{{ format_money(gst_summary.net_gst|abs) }}</div>
-    <div class="kpi-label">Net GST Position</div>
-    <div class="kpi-sub">Collected minus paid for this period</div>
-  </div>
 
-  <div class="kpi-card accent-left blue">
-    <div class="kpi-top">
-      <div class="kpi-icon blue"><i class="bi bi-filetype-csv"></i></div>
-      <span class="kpi-badge neutral">CSV</span>
-    </div>
-    <div class="kpi-value">{{ gst_summary.invoice_count + gst_summary.bill_count }}</div>
-    <div class="kpi-label">Transactions</div>
-    <div class="kpi-sub">Rows included in the export</div>
-  </div>
-</div>
-
-<div class="chart-row reports-grid">
-  <div class="dash-panel">
-    <div class="panel-header">
-      <div>
-        <h2 class="panel-title">GST Summary Report</h2>
-        <p class="panel-subtitle">Comparison for {{ start_date.strftime('%d %b %Y') }} to {{ end_date.strftime('%d %b %Y') }}</p>
+    {% set gst_class = 'amber' if summary.net_gst > 0 else 'teal' if summary.net_gst < 0 else 'green' %}
+    <div class="kpi-card accent-left {{ gst_class }}">
+      <div class="kpi-top">
+        <div class="kpi-icon {{ gst_class }}"><i class="bi bi-receipt-cutoff"></i></div>
+        <span class="kpi-badge {{ 'down' if summary.net_gst > 0 else 'up' if summary.net_gst < 0 else 'neutral' }}">
+          {{ summary.net_gst_label }}
+        </span>
       </div>
+      <div class="kpi-value">{{ format_money(summary.net_gst) }}</div>
+      <div class="kpi-label">Net GST Position</div>
+      <div class="kpi-sub">GST collected minus GST paid</div>
     </div>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th class="text-right">Taxable Value</th>
-          <th class="text-right">GST</th>
-          <th class="text-right">Gross Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <span class="status-pill status-paid">Invoices</span>
-            <span class="report-row-note">GST collected from clients</span>
-          </td>
-          <td class="text-right mono-num">{{ format_money(gst_summary.invoice_subtotal) }}</td>
-          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.gst_collected) }}</strong></td>
-          <td class="text-right mono-num">{{ format_money(gst_summary.invoice_total) }}</td>
-        </tr>
-        <tr>
-          <td>
-            <span class="status-pill status-overdue">Bills</span>
-            <span class="report-row-note">GST paid on expenses</span>
-          </td>
-          <td class="text-right mono-num">{{ format_money(gst_summary.bill_subtotal) }}</td>
-          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.gst_paid) }}</strong></td>
-          <td class="text-right mono-num">{{ format_money(gst_summary.bill_total) }}</td>
-        </tr>
-        <tr class="report-total-row">
-          <td>
-            <span class="inv-number">{{ gst_summary.position_label }}</span>
-          </td>
-          <td class="text-right mono-num muted">GST collected - GST paid</td>
-          <td class="text-right mono-num"><strong>{{ format_money(gst_summary.net_gst|abs) }}</strong></td>
-          <td class="text-right mono-num muted">Period result</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="kpi-card accent-left green">
+      <div class="kpi-top">
+        <div class="kpi-icon green"><i class="bi bi-calendar2-plus"></i></div>
+        <span class="kpi-badge neutral">{{ summary.expected_inflow_count }} due</span>
+      </div>
+      <div class="kpi-value">{{ format_money(summary.expected_inflow) }}</div>
+      <div class="kpi-label">Expected Inflow</div>
+      <div class="kpi-sub">Unpaid money in due by {{ forecast_until.strftime('%d %b') }}</div>
+    </div>
+
+    <div class="kpi-card accent-left red">
+      <div class="kpi-top">
+        <div class="kpi-icon red"><i class="bi bi-calendar2-minus"></i></div>
+        <span class="kpi-badge neutral">{{ summary.upcoming_outflow_count }} due</span>
+      </div>
+      <div class="kpi-value">{{ format_money(summary.upcoming_outflow) }}</div>
+      <div class="kpi-label">Upcoming Outflow</div>
+      <div class="kpi-sub">Unpaid money out due by {{ forecast_until.strftime('%d %b') }}</div>
+    </div>
   </div>
 
-  <div class="dash-panel">
-    <div class="panel-header">
-      <div>
-        <h2 class="panel-title">Export Details</h2>
-        <p class="panel-subtitle">What the CSV includes</p>
-      </div>
-    </div>
-    <div class="report-export-list">
-      <div class="report-export-row">
-        <i class="bi bi-arrow-down-left-circle"></i>
+  <div class="reports-main-grid">
+    <section class="form-card report-card">
+      <div class="form-card-header">
+        <div class="form-card-icon teal"><i class="bi bi-bar-chart"></i></div>
         <div>
-          <strong>Invoices</strong>
-          <span>Client, status, subtotal, GST, total, due date, paid date.</span>
+          <h2 class="form-card-title">Trailing 6-Month Cash Flow</h2>
+          <p class="form-card-sub">Money in vs money out by document date.</p>
+        </div>
+        <div class="chart-legend ms-auto">
+          <span class="legend-dot green"></span><span>Money In</span>
+          <span class="legend-dot red" style="margin-left:12px"></span><span>Money Out</span>
         </div>
       </div>
-      <div class="report-export-row">
-        <i class="bi bi-arrow-up-right-circle"></i>
-        <div>
-          <strong>Bills</strong>
-          <span>Vendor/client, status, subtotal, GST, total, due date, paid date.</span>
+      <div class="reports-chart-body">
+        <canvas id="cashFlowChart" height="110"></canvas>
+      </div>
+      <div class="report-inline-stats report-card-body" style="padding-top:0">
+        <div class="report-inline-stat">
+          <span class="report-inline-label">All-Time Money In</span>
+          <span class="report-inline-value">{{ format_money(summary.total_money_in) }}</span>
+        </div>
+        <div class="report-inline-stat">
+          <span class="report-inline-label">All-Time Money Out</span>
+          <span class="report-inline-value">{{ format_money(summary.total_money_out) }}</span>
         </div>
       </div>
-      <div class="report-export-row">
-        <i class="bi bi-plus-slash-minus"></i>
-        <div>
-          <strong>Signed totals</strong>
-          <span>Invoices are positive. Bills are negative for cash-flow analysis.</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+    </section>
 
-<div class="lower-grid reports-lower-grid">
-  <div class="dash-panel">
-    <div class="panel-header">
+    <section class="form-card report-card">
+      <div class="form-card-header">
+        <div class="form-card-icon amber"><i class="bi bi-trophy"></i></div>
+        <div>
+          <h2 class="form-card-title">Top 3 Clients</h2>
+          <p class="form-card-sub">Paid money-in documents by base revenue.</p>
+        </div>
+      </div>
+      <div class="report-card-body">
+        {% if top_clients %}
+          <div class="top-client-list">
+            {% for row in top_clients %}
+            <div class="top-client-row">
+              <div class="top-client-rank">{{ loop.index }}</div>
+              <div class="top-client-avatar">{{ row.initials }}</div>
+              <div>
+                <div class="top-client-name">{{ row.client_name }}</div>
+                <div class="top-client-meta">{{ row.document_count }} paid document{{ 's' if row.document_count != 1 else '' }}</div>
+                <div class="top-client-bar-wrap">
+                  <div class="top-client-bar" style="width: {{ row.bar_width }}%"></div>
+                </div>
+              </div>
+              <div class="top-client-amount">{{ format_money(row.revenue) }}</div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state report-empty">
+            <div class="empty-icon"><i class="bi bi-people"></i></div>
+            <p class="empty-title">No paid money-in records yet</p>
+            <p class="empty-sub">Client revenue will appear after payments are marked paid.</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <section class="form-card report-card">
+    <div class="form-card-header">
+      <div class="form-card-icon amber"><i class="bi bi-hourglass-split"></i></div>
       <div>
-        <h2 class="panel-title">Recent Invoice GST</h2>
-        <p class="panel-subtitle">Latest invoices in the selected period</p>
+        <h2 class="form-card-title">Outstanding Money-In Documents</h2>
+        <p class="form-card-sub">Oldest unpaid or overdue invoices and itemized bills.</p>
       </div>
     </div>
-    {% if recent_invoices %}
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Invoice</th>
-          <th>Client</th>
-          <th class="text-right">GST</th>
-          <th class="text-right">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for invoice in recent_invoices %}
-        <tr>
-          <td><span class="inv-number">{{ invoice.invoice_number }}</span></td>
-          <td>{{ invoice.client.name if invoice.client else 'Unknown' }}</td>
-          <td class="text-right mono-num">{{ invoice.gst_display }}</td>
-          <td class="text-right mono-num"><strong>{{ invoice.total_display }}</strong></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    {% if outstanding_documents %}
+    <div class="reports-table-wrap">
+      <table class="data-table reports-table">
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th>Format</th>
+            <th>Client</th>
+            <th>Due Date</th>
+            <th class="text-right">Total</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in outstanding_documents %}
+          <tr class="{{ 'row-overdue' if row.is_overdue else '' }}">
+            <td>
+              <a class="inv-number" href="{{ row.url }}" style="text-decoration:none">
+                {{ row.document_number }}
+              </a>
+            </td>
+            <td>
+              <span class="doc-type-pill">
+                <i class="bi bi-{{ 'file-earmark-text' if row.document_type == 'Simple Invoice' else 'receipt' }}"></i>
+                {{ row.document_type }}
+              </span>
+            </td>
+            <td>{{ row.client_name }}</td>
+            <td class="table-date">
+              {% if row.due_date %}
+                {{ row.due_date.strftime('%d %b %Y') }}
+                {% if row.days_overdue > 0 %}
+                  <span class="due-note">{{ row.days_overdue }}d overdue</span>
+                {% endif %}
+              {% else %}
+                Not set
+              {% endif %}
+            </td>
+            <td class="text-right mono-num"><strong>{{ format_money(row.amount) }}</strong></td>
+            <td><span class="status-pill {{ row.status_class }}">{{ row.status_label }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
-    <div class="empty-state">
-      <div class="empty-icon"><i class="bi bi-file-earmark-text"></i></div>
-      <p class="empty-title">No invoices in this period</p>
-      <p class="empty-sub">Try widening the date range.</p>
+    <div class="empty-state report-empty">
+      <div class="empty-icon"><i class="bi bi-check2-circle"></i></div>
+      <p class="empty-title">No outstanding money-in documents</p>
+      <p class="empty-sub">Unpaid incoming invoices and itemized bills will appear here.</p>
     </div>
     {% endif %}
-  </div>
-
-  <div class="dash-panel">
-    <div class="panel-header">
-      <div>
-        <h2 class="panel-title">Recent Bill GST</h2>
-        <p class="panel-subtitle">Latest bills in the selected period</p>
-      </div>
-    </div>
-    {% if recent_bills %}
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Bill</th>
-          <th>Vendor</th>
-          <th class="text-right">GST</th>
-          <th class="text-right">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for bill in recent_bills %}
-        <tr>
-          <td><span class="inv-number">{{ bill.bill_number }}</span></td>
-          <td>{{ bill.client.name if bill.client else 'Unknown' }}</td>
-          <td class="text-right mono-num">{{ bill.total_gst_display }}</td>
-          <td class="text-right mono-num"><strong>{{ bill.grand_total_display }}</strong></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-      <div class="empty-icon"><i class="bi bi-receipt"></i></div>
-      <p class="empty-title">No bills in this period</p>
-      <p class="empty-sub">Try widening the date range.</p>
-    </div>
-    {% endif %}
-  </div>
+  </section>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+const chartLabels = {{ chart.labels | tojson }};
+const chartMoneyIn = {{ chart.money_in | tojson }};
+const chartMoneyOut = {{ chart.money_out | tojson }};
+
+const style = getComputedStyle(document.documentElement);
+const BORDER = style.getPropertyValue('--border').trim() || '#E4E0D8';
+const INK_3 = style.getPropertyValue('--ink-3').trim() || '#8A8480';
+const GREEN = style.getPropertyValue('--green').trim() || '#16A34A';
+const RED = style.getPropertyValue('--red').trim() || '#DC2626';
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = INK_3;
+
+const cashFlowCanvas = document.getElementById('cashFlowChart');
+
+if (cashFlowCanvas) {
+  new Chart(cashFlowCanvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [
+        {
+          label: 'Money In',
+          data: chartMoneyIn,
+          backgroundColor: 'rgba(22, 163, 74, .72)',
+          borderColor: GREEN,
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+        {
+          label: 'Money Out',
+          data: chartMoneyOut,
+          backgroundColor: 'rgba(220, 38, 38, .58)',
+          borderColor: RED,
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1A1714',
+          titleColor: '#fff',
+          bodyColor: 'rgba(255, 255, 255, .78)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: Rs ${ctx.parsed.y.toLocaleString('en-IN', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { font: { size: 11 }, maxRotation: 0 },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: BORDER, drawTicks: false },
+          border: { display: false },
+          ticks: {
+            padding: 8,
+            font: { size: 11 },
+            callback: (value) => 'Rs ' + Number(value).toLocaleString('en-IN'),
+          },
+        },
+      },
+    },
+  });
+}
+</script>
 {% endblock %}
