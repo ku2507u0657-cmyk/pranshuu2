@@ -173,18 +173,35 @@ class Invoice(db.Model):
 
     @classmethod
     def next_invoice_number(cls, owner_id=None):
-        """Sequential invoice number scoped per owner."""
-        q = cls.query
-        if owner_id:
-            q = q.filter_by(owner_id=owner_id)
-        last = q.order_by(cls.id.desc()).with_entities(cls.invoice_number).first()
-        if last is None:
-            return "INV-0001"
-        try:
-            seq = int(last[0].split("-")[1]) + 1
-        except (IndexError, ValueError):
-            seq = cls.query.count() + 1
-        return f"INV-{seq:04d}"
+        """
+        Return the next invoice number that satisfies the database constraint.
+
+        The column is globally unique in existing deployments, so generation
+        must not restart at INV-0001 for each owner. owner_id is accepted for
+        backward-compatible callers but does not scope the sequence.
+        """
+        existing_rows = cls.query.with_entities(cls.invoice_number).all()
+        used_numbers = set()
+        max_sequence = 0
+
+        for (number,) in existing_rows:
+            if not number:
+                continue
+            used_numbers.add(number)
+            if not number.startswith("INV-"):
+                continue
+            try:
+                max_sequence = max(max_sequence, int(number.split("-", 1)[1]))
+            except (IndexError, ValueError):
+                continue
+
+        sequence = max_sequence + 1
+        candidate = f"INV-{sequence:04d}"
+        while candidate in used_numbers:
+            sequence += 1
+            candidate = f"INV-{sequence:04d}"
+
+        return candidate
 
     @classmethod
     def calculate_gst(cls, amount, rate=None):
