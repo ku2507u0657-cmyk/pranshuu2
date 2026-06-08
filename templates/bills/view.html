@@ -91,6 +91,11 @@
         <p style="margin:0 0 3px;font-size:1rem;font-weight:700;color:var(--ink)">
           {{ bill.client.name }}
         </p>
+        {% if bill.client.business_name %}
+        <p style="margin:0 0 3px;font-size:.88rem;font-weight:600;color:var(--ink-2)">
+          {{ bill.client.business_name }}
+        </p>
+        {% endif %}
         {% if bill.client.email %}
         <p style="margin:0 0 2px;font-size:.85rem;color:var(--ink-2)">
           <i class="bi bi-envelope" style="color:var(--ink-3)"></i> {{ bill.client.email }}
@@ -101,8 +106,8 @@
           <i class="bi bi-telephone" style="color:var(--ink-3)"></i> {{ bill.client.phone }}
         </p>
         {% endif %}
-        {% if bill.client.address %}
-        <p style="margin:4px 0 0;font-size:.8rem;color:var(--ink-3)">{{ bill.client.address }}</p>
+        {% if bill.client.full_address %}
+        <p style="margin:4px 0 0;font-size:.8rem;color:var(--ink-3)">{{ bill.client.full_address }}</p>
         {% endif %}
       </div>
       <div style="padding:18px 28px">
@@ -219,12 +224,12 @@
         </a>
         <a href="{{ url_for('bills.create_bill', client_id=bill.client_id) }}" class="qa-btn active">
           <i class="bi bi-plus-lg"></i>
-          <span>New Bill for Client</span>
+          <span>New Bill for Customer</span>
           <i class="bi bi-arrow-up-right ms-auto"></i>
         </a>
         <a href="{{ url_for('bills.client_bills', client_id=bill.client_id) }}" class="qa-btn active">
           <i class="bi bi-clock-history"></i>
-          <span>All Client Bills</span>
+          <span>All Customer Bills</span>
           <i class="bi bi-arrow-up-right ms-auto"></i>
         </a>
       </div>

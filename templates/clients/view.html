@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.name }} - Customer Details{% endblock %}
+{% block page_title %}Customer Details{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb-nav">
+  <a href="{{ url_for('clients.list_clients') }}">Customers</a>
+  <i class="bi bi-chevron-right"></i>
+  <span>{{ client.name }}</span>
+</nav>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <div class="client-name-cell customer-detail-title">
+      <div class="client-avatar customer-detail-avatar">{{ client.initials }}</div>
+      <div>
+        <h1 class="page-heading">{{ client.name }}</h1>
+        <p class="page-sub">
+          {% if client.business_name %}{{ client.business_name }}{% else %}Individual customer{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="page-actions-row">
+    <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn-cancel">
+      <i class="bi bi-pencil"></i> Edit
+    </a>
+    <a href="{{ url_for('invoices.create_invoice', client_id=client.id) }}" class="btn-action-primary">
+      <i class="bi bi-file-earmark-plus"></i> New Invoice
+    </a>
+  </div>
+</div>
+
+<div class="customer-detail-grid">
+  <section class="dash-panel customer-profile-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Profile</h2>
+        <p class="panel-subtitle">Stored customer database details</p>
+      </div>
+    </div>
+    <div class="detail-list">
+      <div class="detail-row">
+        <span>Name</span>
+        <strong>{{ client.name }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Business</span>
+        <strong>{{ client.business_name or '-' }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Mobile</span>
+        <strong>
+          {% if client.phone %}
+            <a href="tel:{{ client.phone }}">{{ client.phone }}</a>
+          {% else %}
+            -
+          {% endif %}
+        </strong>
+      </div>
+      <div class="detail-row">
+        <span>Email</span>
+        <strong>
+          {% if client.email %}
+            <a href="mailto:{{ client.email }}">{{ client.email }}</a>
+          {% else %}
+            -
+          {% endif %}
+        </strong>
+      </div>
+      <div class="detail-row">
+        <span>GST Number</span>
+        <strong>
+          {% if client.gst_number %}
+            <code class="gst-code">{{ client.gst_number }}</code>
+          {% else %}
+            -
+          {% endif %}
+        </strong>
+      </div>
+      <div class="detail-row">
+        <span>City</span>
+        <strong>{{ client.city or '-' }}</strong>
+      </div>
+      <div class="detail-row">
+        <span>State</span>
+        <strong>{{ client.state or '-' }}</strong>
+      </div>
+      <div class="detail-row stacked">
+        <span>Address</span>
+        <strong>{{ client.address or '-' }}</strong>
+      </div>
+      <div class="detail-row stacked">
+        <span>Notes</span>
+        <strong>{{ client.notes or '-' }}</strong>
+      </div>
+    </div>
+  </section>
+
+  <aside class="customer-side-stack">
+    <div class="dash-panel metric-panel">
+      <div class="metric-row">
+        <span>Invoices</span>
+        <strong>{{ invoice_count }}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Bills</span>
+        <strong>{{ bill_count }}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Monthly Fee</span>
+        <strong>{{ client.monthly_fee_display if client.monthly_fee else '-' }}</strong>
+      </div>
+    </div>
+
+    <div class="dash-panel">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Quick Actions</h2>
+          <p class="panel-subtitle">Create or review documents</p>
+        </div>
+      </div>
+      <div class="quick-actions">
+        <a href="{{ url_for('invoices.create_invoice', client_id=client.id) }}" class="qa-btn active">
+          <i class="bi bi-file-earmark-plus"></i>
+          <span>New Invoice</span>
+        </a>
+        <a href="{{ url_for('bills.create_bill', client_id=client.id) }}" class="qa-btn active">
+          <i class="bi bi-receipt"></i>
+          <span>New Bill</span>
+        </a>
+        <a href="{{ url_for('invoices.list_invoices', q=client.name) }}" class="qa-btn">
+          <i class="bi bi-file-earmark-text"></i>
+          <span>All Invoices</span>
+        </a>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="customer-history-grid">
+  <section class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Recent Invoices</h2>
+        <p class="panel-subtitle">Latest invoice activity for this customer</p>
+      </div>
+    </div>
+    {% if recent_invoices %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Total</th>
+            <th>Due Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in recent_invoices %}
+          <tr>
+            <td><a href="{{ url_for('invoices.view_invoice', invoice_id=inv.id) }}" class="table-link">{{ inv.invoice_number }}</a></td>
+            <td class="mono-num">{{ inv.total_display }}</td>
+            <td class="table-date">{{ inv.due_date.strftime('%d %b %Y') }}</td>
+            <td>
+              {% set label, css = inv.status_label %}
+              <span class="status-pill {{ css }}">{{ label }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <p class="empty-title">No invoices yet</p>
+        <p class="empty-sub">Create an invoice when this customer has a receivable.</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="dash-panel">
+    <div class="panel-header">
+      <div>
+        <h2 class="panel-title">Recent Bills</h2>
+        <p class="panel-subtitle">Latest bills linked to this customer</p>
+      </div>
+    </div>
+    {% if recent_bills %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Bill</th>
+            <th>Total</th>
+            <th>Due Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for bill in recent_bills %}
+          <tr>
+            <td><a href="{{ url_for('bills.view_bill', bill_id=bill.id) }}" class="table-link">{{ bill.bill_number }}</a></td>
+            <td class="mono-num">{{ bill.grand_total_display }}</td>
+            <td class="table-date">{{ bill.due_date.strftime('%d %b %Y') if bill.due_date else '-' }}</td>
+            <td>
+              {% set label, css = bill.status_label %}
+              <span class="status-pill {{ css }}">{{ label }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">
+        <p class="empty-title">No bills yet</p>
+        <p class="empty-sub">Bills created for this customer will appear here.</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

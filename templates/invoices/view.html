@@ -102,6 +102,11 @@
         <p style="margin:0 0 3px;font-size:1rem;font-weight:700;color:var(--ink)">
           {{ invoice.client.name }}
         </p>
+        {% if invoice.client.business_name %}
+        <p style="margin:0 0 3px;font-size:.88rem;font-weight:600;color:var(--ink-2)">
+          {{ invoice.client.business_name }}
+        </p>
+        {% endif %}
         {% if invoice.client.email %}
         <p style="margin:0 0 2px;font-size:.85rem;color:var(--ink-2)">
           <i class="bi bi-envelope" style="color:var(--ink-3)"></i>
@@ -114,9 +119,9 @@
           {{ invoice.client.phone }}
         </p>
         {% endif %}
-        {% if invoice.client.address %}
+        {% if invoice.client.full_address %}
         <p style="margin:4px 0 0;font-size:.8rem;color:var(--ink-3)">
-          {{ invoice.client.address }}
+          {{ invoice.client.full_address }}
         </p>
         {% endif %}
         {% if invoice.client.gst_number %}
@@ -225,10 +230,10 @@
           <span>Download PDF</span>
           <i class="bi bi-arrow-down ms-auto"></i>
         </a>
-        <a href="{{ url_for('clients.edit_client', client_id=invoice.client_id) }}"
+        <a href="{{ url_for('clients.view_client', client_id=invoice.client_id) }}"
            class="qa-btn active">
           <i class="bi bi-person-lines-fill"></i>
-          <span>View Client</span>
+          <span>View Customer</span>
           <i class="bi bi-arrow-up-right ms-auto"></i>
         </a>
         <a href="{{ url_for('invoices.create_invoice') }}" class="qa-btn active">

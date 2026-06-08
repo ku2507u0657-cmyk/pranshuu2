@@ -156,12 +156,14 @@ def _render(bill, app) -> bytes:
         Paragraph("BILL TO", S(fontSize=7.5, fontName="Helvetica-Bold", color=INK_3, leading=12)),
         Paragraph(c.name, S(fontSize=11, fontName="Helvetica-Bold", color=INK, leading=15)),
     ]
+    if c.business_name:
+        bill_lines.append(Paragraph(c.business_name, S(fontSize=9, color=INK_2, leading=13)))
     if c.email:
         bill_lines.append(Paragraph(c.email,   S(fontSize=9, color=INK_2, leading=13)))
     if c.phone:
         bill_lines.append(Paragraph(c.phone,   S(fontSize=9, color=INK_2, leading=13)))
-    if c.address:
-        bill_lines.append(Paragraph(c.address, S(fontSize=8.5, color=INK_2, leading=12)))
+    if c.full_address:
+        bill_lines.append(Paragraph(c.full_address, S(fontSize=8.5, color=INK_2, leading=12)))
     if c.gst_number:
         bill_lines.append(Paragraph(f"GSTIN: {c.gst_number}",
                           S(fontSize=8.5, color=INK_3, leading=12)))

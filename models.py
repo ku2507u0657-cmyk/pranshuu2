@@ -73,11 +73,14 @@ class Client(db.Model):
     owner_id    = db.Column(db.Integer,        db.ForeignKey("admins.id"),
                              nullable=False, index=True)            # multi-user FK
     name        = db.Column(db.String(200),    nullable=False, index=True)
+    business_name = db.Column(db.String(200),  nullable=True, index=True)
     phone       = db.Column(db.String(50),     nullable=True)
     email       = db.Column(db.String(255),    nullable=True, index=True)
     monthly_fee = db.Column(db.Numeric(10, 2), nullable=True, default=0.00)
     gst_number  = db.Column(db.String(30),     nullable=True)
     address     = db.Column(db.Text,           nullable=True)
+    city        = db.Column(db.String(100),    nullable=True, index=True)
+    state       = db.Column(db.String(100),    nullable=True, index=True)
     notes       = db.Column(db.Text,           nullable=True)
     is_active   = db.Column(db.Boolean,        default=True, nullable=False)
     created_at  = db.Column(db.DateTime,       nullable=False,
@@ -102,15 +105,30 @@ class Client(db.Model):
             return (parts[0][0] + parts[-1][0]).upper()
         return self.name[:2].upper()
 
+    @property
+    def display_name(self):
+        return self.business_name or self.name
+
+    @property
+    def location(self):
+        return ", ".join(part for part in [self.city, self.state] if part)
+
+    @property
+    def full_address(self):
+        return ", ".join(part for part in [self.address, self.city, self.state] if part)
+
     def __repr__(self):
         return f"<Client id={self.id} name={self.name!r}>"
 
     def to_dict(self):
         return {
             "id": self.id, "name": self.name, "phone": self.phone,
+            "business_name": self.business_name,
             "email": self.email,
             "monthly_fee": float(self.monthly_fee) if self.monthly_fee else 0.0,
             "gst_number": self.gst_number, "address": self.address,
+            "city": self.city, "state": self.state,
+            "location": self.location, "full_address": self.full_address,
             "is_active": self.is_active, "created_at": self.created_at.isoformat(),
         }
 

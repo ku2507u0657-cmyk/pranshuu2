@@ -4,7 +4,7 @@
 
 {% block content %}
 <style>
-/* Sleek Segmented Control for Money In / Out and Client Type */
+/* Sleek Segmented Control for Money In / Out and Customer Type */
 .transaction-toggle {
   display: inline-flex;
   background: var(--bg, #f4f4f5);
@@ -91,17 +91,21 @@
 
       <div class="form-row">
         <div class="form-group full-width">
-          <label class="form-label required">Vendor / Client Details</label>
+          <label class="form-label required">Vendor / Customer Details</label>
           
           <div class="transaction-toggle" style="margin-bottom: 12px;">
             <label>
-              <input type="radio" name="client_type" value="existing" checked onchange="toggleClientMode()">
+              <input type="radio" name="client_type" value="existing"
+                     {{ 'checked' if form.get('client_type', 'existing') == 'existing' }}
+                     onchange="toggleClientMode()">
               <span class="toggle-pill neutral-pill">
                 <i class="bi bi-person-lines-fill"></i> Existing Contact
               </span>
             </label>
             <label>
-              <input type="radio" name="client_type" value="one-time" onchange="toggleClientMode()">
+              <input type="radio" name="client_type" value="one-time"
+                     {{ 'checked' if form.get('client_type', 'existing') == 'one-time' }}
+                     onchange="toggleClientMode()">
               <span class="toggle-pill neutral-pill">
                 <i class="bi bi-person-plus-fill"></i> One-Time Contact
               </span>
@@ -127,15 +131,18 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
               <div class="form-group" style="grid-column: 1 / -1; margin: 0;">
                 <label class="form-label required" style="font-size: 0.8rem;">Vendor / Business Name</label>
-                <input type="text" id="guest_name" name="guest_name" class="form-field" placeholder="e.g. Raghuvanshi Timber Mart">
+                <input type="text" id="guest_name" name="guest_name" class="form-field"
+                       placeholder="e.g. Raghuvanshi Timber Mart" value="{{ form.get('guest_name','') }}">
               </div>
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-size: 0.8rem;">Email (for PDF sending)</label>
-                <input type="email" id="guest_email" name="guest_email" class="form-field" placeholder="vendor@email.com">
+                <input type="email" id="guest_email" name="guest_email" class="form-field"
+                       placeholder="vendor@email.com" value="{{ form.get('guest_email','') }}">
               </div>
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-size: 0.8rem;">Phone Number</label>
-                <input type="text" id="guest_phone" name="guest_phone" class="form-field" placeholder="+91 98765 43210">
+                <input type="text" id="guest_phone" name="guest_phone" class="form-field"
+                       placeholder="+91 98765 43210" value="{{ form.get('guest_phone','') }}">
               </div>
             </div>
           </div>

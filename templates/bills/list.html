@@ -30,7 +30,7 @@
   <div class="search-bar-wrap">
     <i class="bi bi-search search-icon"></i>
     <input type="search" name="q" class="search-input"
-           placeholder="Search by bill number or client…" value="{{ search }}" />
+           placeholder="Search by bill number or customer..." value="{{ search }}" />
     {% if search %}
     <a href="{{ url_for('bills.list_bills', status=status_filter) }}" class="search-clear">
       <i class="bi bi-x-lg"></i>
@@ -46,7 +46,7 @@
     <thead>
       <tr>
         <th>Bill #</th>
-        <th>Client</th>
+        <th>Customer</th>
         <th class="text-right">Subtotal</th>
         <th class="text-right">GST</th>
         <th class="text-right">Grand Total</th>

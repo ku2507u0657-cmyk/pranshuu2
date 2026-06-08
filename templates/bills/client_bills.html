@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}{{ client.name }} — Bills{% endblock %}
-{% block page_title %}Client Bills{% endblock %}
+{% block page_title %}Customer Bills{% endblock %}
 
 {% block content %}
 <nav class="breadcrumb-nav">
-  <a href="{{ url_for('clients.list_clients') }}">Clients</a>
+  <a href="{{ url_for('clients.list_clients') }}">Customers</a>
   <i class="bi bi-chevron-right"></i>
   <span>{{ client.name }}</span>
   <i class="bi bi-chevron-right"></i>
@@ -17,8 +17,8 @@
     <p class="page-sub">{{ bills|length }} bill{{ 's' if bills|length != 1 else '' }}</p>
   </div>
   <div style="display:flex;gap:10px">
-    <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn-cancel">
-      <i class="bi bi-pencil"></i> Edit Client
+    <a href="{{ url_for('clients.view_client', client_id=client.id) }}" class="btn-cancel">
+      <i class="bi bi-person-vcard"></i> View Customer
     </a>
     <a href="{{ url_for('bills.create_bill', client_id=client.id) }}" class="btn-action-primary">
       <i class="bi bi-plus-lg"></i> New Bill

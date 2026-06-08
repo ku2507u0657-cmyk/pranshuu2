@@ -140,7 +140,7 @@
         <thead>
           <tr>
             <th>Invoice</th>
-            <th>Client</th>
+            <th>Customer</th>
             <th class="text-right">Total</th>
             <th>Due Date</th>
             <th>Status</th>
@@ -212,7 +212,7 @@
         <thead>
           <tr>
             <th>Bill #</th>
-            <th>Vendor</th>
+            <th>Customer</th>
             <th class="text-right">Total</th>
             <th>Due Date</th>
             <th class="text-center">Action</th>
@@ -224,10 +224,10 @@
             <td><span class="inv-number">{{ bill.bill_number or 'N/A' }}</span></td>
             <td>
               <div class="client-name-cell">
-                <span class="client-name">{{ bill.vendor.name if bill.vendor else 'Unknown Vendor' }}</span>
+                <span class="client-name">{{ bill.client.name if bill.client else 'Unknown Customer' }}</span>
               </div>
             </td>
-            <td class="text-right mono-num"><strong>{{ bill.total_display }}</strong></td>
+            <td class="text-right mono-num"><strong>{{ bill.grand_total_display }}</strong></td>
             <td class="table-date">
               {% if bill.is_overdue %}
                 <span class="overdue-date">
@@ -263,10 +263,10 @@
     <div class="dash-panel" style="margin-bottom: 0;">
       <div class="panel-header">
         <div>
-          <h2 class="panel-title">Top Clients</h2>
+          <h2 class="panel-title">Top Customers</h2>
           <p class="panel-subtitle">By total billed</p>
         </div>
-        <a href="{{ url_for('clients.list_clients') }}" class="panel-action">All clients &rarr;</a>
+        <a href="{{ url_for('clients.list_clients') }}" class="panel-action">All customers &rarr;</a>
       </div>
 
       {% if top_clients %}
@@ -295,8 +295,8 @@
       {% else %}
       <div class="empty-state" style="padding:32px 24px">
         <div class="empty-icon"><i class="bi bi-people"></i></div>
-        <p class="empty-title">No clients yet</p>
-        <p class="empty-sub"><a href="{{ url_for('clients.add_client') }}">Add your first client</a></p>
+        <p class="empty-title">No customers yet</p>
+        <p class="empty-sub"><a href="{{ url_for('clients.add_client') }}">Add your first customer</a></p>
       </div>
       {% endif %}
     </div>
@@ -359,11 +359,11 @@
           <div class="activity-info">
             <div class="activity-title">
               <span class="inv-number" style="font-size:.75rem">{{ bill.bill_number or 'Bill' }}</span>
-              &nbsp;{{ bill.vendor.name if bill.vendor else 'Vendor' }}
+              &nbsp;{{ bill.client.name if bill.client else 'Customer' }}
             </div>
             <div class="activity-date">{{ bill.created_at.strftime('%d %b %Y') }}</div>
           </div>
-          <div class="activity-amount" style="color: var(--red);">-{{ bill.total_display }}</div>
+          <div class="activity-amount" style="color: var(--red);">-{{ bill.grand_total_display }}</div>
         </div>
         {% endfor %}
       </div>

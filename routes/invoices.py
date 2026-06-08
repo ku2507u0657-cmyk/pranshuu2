@@ -14,6 +14,11 @@ from flask import (
 from flask_login import login_required, current_user
 from extensions import db
 from models import Invoice, InvoiceStatus, Client
+from utils.customer_validation import (
+    find_customer_by_phone,
+    validate_email_address,
+    validate_phone,
+)
 
 logger = logging.getLogger(__name__)
 invoices_bp = Blueprint("invoices", __name__, url_prefix="/invoices")
@@ -120,9 +125,10 @@ def create_invoice():
     clients = (Client.query
                .filter_by(owner_id=current_user.id, is_active=True)
                .order_by(Client.name.asc()).all())
+    preselected_client_id = request.args.get("client_id", type=int)
+    default_due = (date.today() + timedelta(days=30)).isoformat()
 
     if request.method == "POST":
-        # --- NEW: Detect Client Type ---
         client_type = request.form.get("client_type", "existing").strip()
         
         amount_raw = request.form.get("amount",    "").strip()
@@ -133,41 +139,51 @@ def create_invoice():
 
         errors = []
         client_id = None
+        pending_guest = None
 
-        # --- NEW: Process Based on Client Type ---
         if client_type == "one-time":
             guest_name = request.form.get("guest_name", "").strip()
             guest_email = request.form.get("guest_email", "").strip()
             guest_phone = request.form.get("guest_phone", "").strip()
 
             if not guest_name:
-                errors.append("Client Name is required for one-time billing.")
-            else:
-                try:
-                    # Create the shadow client record instantly
-                    new_client = Client(
-                        owner_id=current_user.id,
-                        name=guest_name,
-                        email=guest_email or None,
-                        phone=guest_phone or None,
-                        is_active=True
-                    )
-                    db.session.add(new_client)
-                    db.session.flush() # Flushes to DB to instantly generate new_client.id
-                    client_id = new_client.id
-                except Exception as e:
-                    errors.append(f"Failed to create one-time client profile: {str(e)}")
+                errors.append("Customer name is required for one-time billing.")
+
+            phone_ok, phone_error = validate_phone(guest_phone)
+            if not phone_ok:
+                errors.append(phone_error)
+
+            email_ok, normalized_email, email_error = validate_email_address(guest_email)
+            if not email_ok:
+                errors.append(email_error)
+
+            duplicate = find_customer_by_phone(current_user.id, guest_phone) if guest_phone else None
+            if duplicate:
+                client_id = duplicate.id
+            elif guest_name:
+                pending_guest = {
+                    "name": guest_name,
+                    "email": normalized_email or None,
+                    "phone": guest_phone or None,
+                }
         else:
-            # Standard dropdown selection logic
             client_id_raw = request.form.get("client_id", "").strip()
             if not client_id_raw:
-                errors.append("Please select a client.")
+                errors.append("Please select a customer.")
             else:
-                client = Client.query.filter_by(id=int(client_id_raw), owner_id=current_user.id).first()
-                if not client:
-                    errors.append("Selected client not found.")
-                else:
-                    client_id = client.id
+                try:
+                    selected_id = int(client_id_raw)
+                    client = Client.query.filter_by(
+                        id=selected_id,
+                        owner_id=current_user.id,
+                        is_active=True,
+                    ).first()
+                    if not client:
+                        errors.append("Selected customer not found.")
+                    else:
+                        client_id = client.id
+                except ValueError:
+                    errors.append("Selected customer is invalid.")
 
         # --- Core Invoice Validations (Kept exact same) ---
         if not amount_raw:
@@ -200,10 +216,22 @@ def create_invoice():
                 flash(err, "danger")
             return render_template("invoices/create.html",
                 clients=clients, form=request.form,
-                today=date.today(),
+                default_due=default_due, today=date.today(),
+                preselected_client_id=preselected_client_id,
                 app_name=current_app.config.get("APP_NAME"))
 
-        # --- Calculation and Generation (Kept exact same) ---
+        if pending_guest:
+            new_client = Client(
+                owner_id=current_user.id,
+                name=pending_guest["name"],
+                email=pending_guest["email"],
+                phone=pending_guest["phone"],
+                is_active=True,
+            )
+            db.session.add(new_client)
+            db.session.flush()
+            client_id = new_client.id
+
         gst_amount, total = Invoice.calculate_gst(amount, rate=gst_rate)
 
         invoice = Invoice(
@@ -235,9 +263,9 @@ def create_invoice():
         _dispatch_email(invoice, app)
         return redirect(url_for("invoices.view_invoice", invoice_id=invoice.id))
 
-    default_due = (date.today() + timedelta(days=30)).isoformat()
     return render_template("invoices/create.html",
         clients=clients, form={},
+        preselected_client_id=preselected_client_id,
         default_due=default_due, today=date.today(),
         app_name=current_app.config.get("APP_NAME", "InvoiceFlow"),
     )

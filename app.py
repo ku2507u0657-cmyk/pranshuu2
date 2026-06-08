@@ -4,6 +4,7 @@ Multi-user: every Client/Invoice/Bill is scoped to its owner Admin.
 """
 import os
 from flask import Flask
+from sqlalchemy import inspect, text
 from config import get_config
 from extensions import db, migrate, login_manager
 
@@ -41,6 +42,7 @@ def create_app(config_class=None):
 
     with app.app_context():
         db.create_all()
+        _ensure_compatible_schema(app)
         _seed_admin(app)
 
     from scheduler import init_scheduler
@@ -65,6 +67,54 @@ def _seed_admin(app):
         db.session.add(admin)
         db.session.commit()
         app.logger.info("Seeded default admin: '%s'", username)
+
+
+def _ensure_compatible_schema(app):
+    """
+    Add missing columns to existing databases.
+
+    The project currently relies on db.create_all(), which creates missing
+    tables but does not alter existing tables. These additive columns/defaulted
+    fields keep old invoice and bill records compatible with the current models.
+    """
+    table_columns = {
+        "clients": {
+            "business_name": "VARCHAR(200)",
+            "city": "VARCHAR(100)",
+            "state": "VARCHAR(100)",
+        },
+        "invoices": {
+            "transaction_type": "VARCHAR(10) NOT NULL DEFAULT 'in'",
+        },
+        "bills": {
+            "transaction_type": "VARCHAR(10) NOT NULL DEFAULT 'out'",
+        },
+    }
+
+    try:
+        with db.engine.begin() as conn:
+            inspector = inspect(conn)
+            existing_tables = set(inspector.get_table_names())
+
+            for table_name, columns in table_columns.items():
+                if table_name not in existing_tables:
+                    continue
+
+                existing_columns = {
+                    column["name"] for column in inspector.get_columns(table_name)
+                }
+                for column_name, ddl_type in columns.items():
+                    if column_name not in existing_columns:
+                        conn.execute(
+                            text(
+                                f"ALTER TABLE {table_name} "
+                                f"ADD COLUMN {column_name} {ddl_type}"
+                            )
+                        )
+                        app.logger.info("Added %s.%s column", table_name, column_name)
+    except Exception as exc:
+        app.logger.exception("Could not verify database schema: %s", exc)
+        raise
 
 
 app = create_app()

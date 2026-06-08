@@ -14,6 +14,11 @@ from flask import (
 from flask_login import login_required, current_user
 from extensions import db
 from models import Bill, BillItem, BillStatus, Client
+from utils.customer_validation import (
+    find_customer_by_phone,
+    validate_email_address,
+    validate_phone,
+)
 
 logger = logging.getLogger(__name__)
 bills_bp = Blueprint("bills", __name__, url_prefix="/bills")
@@ -96,39 +101,51 @@ def create_bill(client_id=None):
 
         errors = []
         cid = None
+        pending_guest = None
 
-        # --- NEW: Process Based on Client Type ---
         if client_type == "one-time":
             guest_name = request.form.get("guest_name", "").strip()
             guest_email = request.form.get("guest_email", "").strip()
             guest_phone = request.form.get("guest_phone", "").strip()
 
             if not guest_name:
-                errors.append("Vendor/Client Name is required for one-time billing.")
-            else:
-                try:
-                    new_client = Client(
-                        owner_id=current_user.id,
-                        name=guest_name,
-                        email=guest_email or None,
-                        phone=guest_phone or None,
-                        is_active=True
-                    )
-                    db.session.add(new_client)
-                    db.session.flush() # Instantly generates the new ID
-                    cid = new_client.id
-                except Exception as e:
-                    errors.append(f"Failed to create one-time profile: {str(e)}")
+                errors.append("Vendor/customer name is required for one-time billing.")
+
+            phone_ok, phone_error = validate_phone(guest_phone)
+            if not phone_ok:
+                errors.append(phone_error)
+
+            email_ok, normalized_email, email_error = validate_email_address(guest_email)
+            if not email_ok:
+                errors.append(email_error)
+
+            duplicate = find_customer_by_phone(current_user.id, guest_phone) if guest_phone else None
+            if duplicate:
+                cid = duplicate.id
+            elif guest_name:
+                pending_guest = {
+                    "name": guest_name,
+                    "email": normalized_email or None,
+                    "phone": guest_phone or None,
+                }
         else:
             cid_raw = request.form.get("client_id", "").strip()
             if not cid_raw:
-                errors.append("Please select a client/vendor.")
+                errors.append("Please select a customer/vendor.")
             else:
-                client = Client.query.filter_by(id=int(cid_raw), owner_id=current_user.id).first()
-                if not client:
-                    errors.append("Selected client not found.")
-                else:
-                    cid = client.id
+                try:
+                    selected_id = int(cid_raw)
+                    client = Client.query.filter_by(
+                        id=selected_id,
+                        owner_id=current_user.id,
+                        is_active=True,
+                    ).first()
+                    if not client:
+                        errors.append("Selected customer/vendor not found.")
+                    else:
+                        cid = client.id
+                except ValueError:
+                    errors.append("Selected customer/vendor is invalid.")
 
         valid_items = []
         for i, name in enumerate(item_names):
@@ -169,6 +186,18 @@ def create_bill(client_id=None):
                 form=request.form,
                 app_name=current_app.config.get("APP_NAME"),
             )
+
+        if pending_guest:
+            new_client = Client(
+                owner_id=current_user.id,
+                name=pending_guest["name"],
+                email=pending_guest["email"],
+                phone=pending_guest["phone"],
+                is_active=True,
+            )
+            db.session.add(new_client)
+            db.session.flush()
+            cid = new_client.id
 
         bill = Bill(
             owner_id         = current_user.id,

@@ -45,7 +45,7 @@
   <div class="search-bar-wrap">
     <i class="bi bi-search search-icon"></i>
     <input type="search" name="q" class="search-input"
-           placeholder="Search by invoice number or client name…"
+           placeholder="Search by invoice number or customer name..."
            value="{{ search }}" autocomplete="off" />
     {% if search %}
     <a href="{{ url_for('invoices.list_invoices', status=status_filter) }}"
@@ -61,7 +61,7 @@
     <thead>
       <tr>
         <th>Invoice #</th>
-        <th>Client</th>
+        <th>Customer</th>
         <th class="text-right">Amount</th>
         <th class="text-right">GST</th>
         <th class="text-right">Total</th>

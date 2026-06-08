@@ -95,19 +95,23 @@
 
       <div class="form-row">
         <div class="form-group full-width">
-          <label class="form-label required">Client Details</label>
+          <label class="form-label required">Customer Details</label>
           
           <div class="transaction-toggle" style="margin-bottom: 12px;">
             <label>
-              <input type="radio" name="client_type" value="existing" checked onchange="toggleClientMode()">
+              <input type="radio" name="client_type" value="existing"
+                     {{ 'checked' if form.get('client_type', 'existing') == 'existing' }}
+                     onchange="toggleClientMode()">
               <span class="toggle-pill neutral-pill">
-                <i class="bi bi-person-lines-fill"></i> Existing Client
+                <i class="bi bi-person-lines-fill"></i> Existing Customer
               </span>
             </label>
             <label>
-              <input type="radio" name="client_type" value="one-time" onchange="toggleClientMode()">
+              <input type="radio" name="client_type" value="one-time"
+                     {{ 'checked' if form.get('client_type', 'existing') == 'one-time' }}
+                     onchange="toggleClientMode()">
               <span class="toggle-pill neutral-pill">
-                <i class="bi bi-person-plus-fill"></i> One-Time Client
+                <i class="bi bi-person-plus-fill"></i> One-Time Customer
               </span>
             </label>
           </div>
@@ -116,22 +120,43 @@
             <div class="input-wrap">
               <i class="bi bi-person input-icon"></i>
               <select id="client_id" name="client_id" class="form-field form-select" required
-                      onchange="prefillFee(this)">
-                <option value="">— Select a client —</option>
+                      onchange="handleCustomerSelect(this)">
+                <option value="">Select a customer</option>
                 {% for client in clients %}
                 <option value="{{ client.id }}"
                         data-fee="{{ client.monthly_fee or '' }}"
-                        {{ 'selected' if form.get('client_id','') == client.id|string }}>
+                        data-name="{{ client.name }}"
+                        data-business="{{ client.business_name or '' }}"
+                        data-phone="{{ client.phone or '' }}"
+                        data-email="{{ client.email or '' }}"
+                        data-gst="{{ client.gst_number or '' }}"
+                        data-address="{{ client.full_address or '' }}"
+                        data-location="{{ client.location or '' }}"
+                        {{ 'selected' if form.get('client_id','') == client.id|string or (not form.get('client_id','') and preselected_client_id == client.id) }}>
                   {{ client.name }}
+                  {% if client.business_name %}- {{ client.business_name }}{% endif %}
                   {% if client.monthly_fee %}({{ client.monthly_fee_display }}/mo){% endif %}
                 </option>
                 {% endfor %}
               </select>
             </div>
+            <div id="selected-customer-card" class="selected-customer-card" style="display:none">
+              <div class="selected-customer-head">
+                <i class="bi bi-person-vcard"></i>
+                <strong id="selectedCustomerName"></strong>
+              </div>
+              <div class="selected-customer-grid">
+                <span>Business</span><strong id="selectedCustomerBusiness">-</strong>
+                <span>Mobile</span><strong id="selectedCustomerPhone">-</strong>
+                <span>Email</span><strong id="selectedCustomerEmail">-</strong>
+                <span>GST</span><strong id="selectedCustomerGst">-</strong>
+                <span>Address</span><strong id="selectedCustomerAddress">-</strong>
+              </div>
+            </div>
             {% if not clients %}
             <span class="form-hint" style="color:var(--amber); margin-top: 8px; display: block;">
               <i class="bi bi-exclamation-triangle"></i>
-              No active clients. <a href="{{ url_for('clients.add_client') }}">Add one first</a> or use a One-Time Client above.
+              No active customers. <a href="{{ url_for('clients.add_client') }}">Add one first</a> or use a One-Time Customer above.
             </span>
             {% endif %}
           </div>
@@ -139,16 +164,19 @@
           <div id="one-time-client-group" style="display: none;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: var(--bg); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
               <div class="form-group" style="grid-column: 1 / -1; margin: 0;">
-                <label class="form-label required" style="font-size: 0.8rem;">Client Name / Business Name</label>
-                <input type="text" id="guest_name" name="guest_name" class="form-field" placeholder="e.g. Acme Corp">
+                <label class="form-label required" style="font-size: 0.8rem;">Customer Name / Business Name</label>
+                <input type="text" id="guest_name" name="guest_name" class="form-field"
+                       placeholder="e.g. Acme Corp" value="{{ form.get('guest_name','') }}">
               </div>
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-size: 0.8rem;">Email (for PDF sending)</label>
-                <input type="email" id="guest_email" name="guest_email" class="form-field" placeholder="client@email.com">
+                <input type="email" id="guest_email" name="guest_email" class="form-field"
+                       placeholder="customer@email.com" value="{{ form.get('guest_email','') }}">
               </div>
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-size: 0.8rem;">Phone Number</label>
-                <input type="text" id="guest_phone" name="guest_phone" class="form-field" placeholder="+91 98765 43210">
+                <input type="text" id="guest_phone" name="guest_phone" class="form-field"
+                       placeholder="+91 98765 43210" value="{{ form.get('guest_phone','') }}">
               </div>
             </div>
           </div>
@@ -313,6 +341,7 @@ function toggleClientMode() {
   const mode = document.querySelector('input[name="client_type"]:checked').value;
   const existingGrp = document.getElementById('existing-client-group');
   const oneTimeGrp = document.getElementById('one-time-client-group');
+  const selectedCard = document.getElementById('selected-customer-card');
   
   const clientIdInput = document.getElementById('client_id');
   const guestNameInput = document.getElementById('guest_name');
@@ -320,6 +349,7 @@ function toggleClientMode() {
   if (mode === 'one-time') {
     existingGrp.style.display = 'none';
     oneTimeGrp.style.display = 'block';
+    selectedCard.style.display = 'none';
     
     // Swap required attributes so HTML validation doesn't block submission
     clientIdInput.removeAttribute('required');
@@ -327,6 +357,7 @@ function toggleClientMode() {
   } else {
     existingGrp.style.display = 'block';
     oneTimeGrp.style.display = 'none';
+    updateCustomerDetails(clientIdInput);
     
     guestNameInput.removeAttribute('required');
     clientIdInput.setAttribute('required', 'true');
@@ -381,12 +412,38 @@ function updatePreview() {
   document.getElementById('previewGstRate').textContent = rate % 1 === 0 ? rate : rate.toFixed(2);
 }
 
+function setCustomerText(id, value) {
+  document.getElementById(id).textContent = value || '-';
+}
+
+function updateCustomerDetails(sel) {
+  const selected = sel.options[sel.selectedIndex];
+  const card = document.getElementById('selected-customer-card');
+  if (!selected || !selected.value) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = 'block';
+  setCustomerText('selectedCustomerName', selected.dataset.name || selected.textContent.trim());
+  setCustomerText('selectedCustomerBusiness', selected.dataset.business);
+  setCustomerText('selectedCustomerPhone', selected.dataset.phone);
+  setCustomerText('selectedCustomerEmail', selected.dataset.email);
+  setCustomerText('selectedCustomerGst', selected.dataset.gst);
+  setCustomerText('selectedCustomerAddress', selected.dataset.address || selected.dataset.location);
+}
+
 function prefillFee(sel) {
   const fee = sel.options[sel.selectedIndex]?.dataset.fee;
   if (fee) {
     document.getElementById('amount').value = fee;
     updatePreview();
   }
+}
+
+function handleCustomerSelect(sel) {
+  updateCustomerDetails(sel);
+  prefillFee(sel);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -399,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize form state
   toggleClientMode();
+  handleCustomerSelect(document.getElementById('client_id'));
   updatePreview();
 });
 </script>
