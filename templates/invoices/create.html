@@ -78,13 +78,15 @@
           <label class="form-label required">Transaction Type</label>
           <div class="transaction-toggle">
             <label>
-              <input type="radio" name="transaction_type" value="in" checked>
+              <input type="radio" name="transaction_type" value="in"
+                     {{ 'checked' if form.get('transaction_type', 'in') == 'in' }}>
               <span class="toggle-pill money-in">
                 <i class="bi bi-box-arrow-in-down-left"></i> Money In
               </span>
             </label>
             <label>
-              <input type="radio" name="transaction_type" value="out">
+              <input type="radio" name="transaction_type" value="out"
+                     {{ 'checked' if form.get('transaction_type', 'in') == 'out' }}>
               <span class="toggle-pill money-out">
                 <i class="bi bi-box-arrow-up-right"></i> Money Out
               </span>
@@ -181,6 +183,73 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group full-width">
+          <label class="form-label" for="product_id">Inventory Product</label>
+          <div class="input-wrap">
+            <i class="bi bi-box-seam input-icon"></i>
+            <select id="product_id" name="product_id" class="form-field form-select"
+                    onchange="handleProductSelect(this)">
+              <option value="">Manual invoice - no inventory product</option>
+              {% for product in products %}
+              <option value="{{ product.id }}"
+                      data-name="{{ product.name }}"
+                      data-sku="{{ product.sku }}"
+                      data-category="{{ product.category or '' }}"
+                      data-unit="{{ product.unit }}"
+                      data-hsn="{{ product.hsn_code or '' }}"
+                      data-gst="{{ product.gst_rate|float }}"
+                      data-price="{{ '%.2f'|format(product.selling_price|float) }}"
+                      data-stock="{{ '%.3f'|format(product.current_stock|float) }}"
+                      {{ 'selected' if form.get('product_id','') == product.id|string }}>
+                {{ product.name }} - {{ product.sku }} ({{ product.stock_display }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if not products %}
+          <span class="form-hint" style="color:var(--amber); margin-top: 8px; display: block;">
+            <i class="bi bi-exclamation-triangle"></i>
+            No active products. <a href="{{ url_for('products.add_product') }}">Add one</a> or continue manually.
+          </span>
+          {% else %}
+          <span class="form-hint">
+            <i class="bi bi-info-circle"></i>
+            Select a product to auto-fill selling price and GST, then reduce stock on save.
+          </span>
+          {% endif %}
+
+          <div id="selected-product-card" class="selected-product-card" style="display:none">
+            <div class="selected-product-head">
+              <i class="bi bi-box-seam"></i>
+              <strong id="selectedProductName"></strong>
+            </div>
+            <div class="selected-product-grid">
+              <span>SKU</span><strong id="selectedProductSku">-</strong>
+              <span>Category</span><strong id="selectedProductCategory">-</strong>
+              <span>HSN</span><strong id="selectedProductHsn">-</strong>
+              <span>GST</span><strong id="selectedProductGst">-</strong>
+              <span>Price</span><strong id="selectedProductPrice">-</strong>
+              <span>Stock</span><strong id="selectedProductStock">-</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="product_quantity">Product Quantity</label>
+          <div class="input-wrap">
+            <i class="bi bi-boxes input-icon"></i>
+            <input type="number" id="product_quantity" name="product_quantity" class="form-field"
+                   placeholder="1" min="0.001" step="0.001"
+                   value="{{ form.get('product_quantity','1') }}"
+                   oninput="applyProductToInvoice()" />
+          </div>
+          <span id="productStockWarning" class="stock-warning-text"></span>
         </div>
       </div>
 
@@ -387,6 +456,30 @@ function applyCustomRate(v) {
   updatePreview();
 }
 
+function setGstRate(rate) {
+  const parsed = parseFloat(rate) || 0;
+  const standardValues = ['0', '5', '12', '18', '28'];
+  const matched = standardValues.find(value => parseFloat(value) === parsed);
+
+  currentRate = parsed;
+  document.getElementById('gst_rate_value').value = currentRate;
+
+  if (matched) {
+    const radio = document.querySelector(`input[name="gst_rate_radio"][value="${matched}"]`);
+    if (radio) radio.checked = true;
+    document.getElementById('custom_gst_wrap').style.display = 'none';
+    document.getElementById('custom_gst_input').value = '';
+  } else {
+    const customRadio = document.querySelector('input[name="gst_rate_radio"][value="custom"]');
+    if (customRadio) customRadio.checked = true;
+    document.getElementById('custom_gst_wrap').style.display = 'block';
+    document.getElementById('custom_gst_input').value = parsed;
+  }
+
+  highlightSlab();
+  updatePreview();
+}
+
 function highlightSlab() {
   document.querySelectorAll('.gst-slab-btn').forEach(btn => {
     btn.classList.remove('selected');
@@ -433,7 +526,101 @@ function updateCustomerDetails(sel) {
   setCustomerText('selectedCustomerAddress', selected.dataset.address || selected.dataset.location);
 }
 
+function setProductText(id, value) {
+  document.getElementById(id).textContent = value || '-';
+}
+
+function plainQty(value) {
+  const number = parseFloat(value) || 0;
+  return number.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function updateProductDetails(sel) {
+  const selected = sel.options[sel.selectedIndex];
+  const card = document.getElementById('selected-product-card');
+  const qtyInput = document.getElementById('product_quantity');
+  const warning = document.getElementById('productStockWarning');
+
+  warning.style.display = 'none';
+  warning.textContent = '';
+  qtyInput.setCustomValidity('');
+
+  if (!selected || !selected.value) {
+    card.style.display = 'none';
+    qtyInput.removeAttribute('required');
+    qtyInput.removeAttribute('max');
+    return;
+  }
+
+  card.style.display = 'block';
+  qtyInput.setAttribute('required', 'true');
+  qtyInput.setAttribute('max', selected.dataset.stock || '');
+  if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) {
+    qtyInput.value = '1';
+  }
+
+  const unit = selected.dataset.unit || '';
+  setProductText('selectedProductName', selected.dataset.name || selected.textContent.trim());
+  setProductText('selectedProductSku', selected.dataset.sku);
+  setProductText('selectedProductCategory', selected.dataset.category);
+  setProductText('selectedProductHsn', selected.dataset.hsn);
+  setProductText('selectedProductGst', (parseFloat(selected.dataset.gst || 0)).toString() + '%');
+  setProductText('selectedProductPrice', fmt(selected.dataset.price));
+  setProductText('selectedProductStock', `${plainQty(selected.dataset.stock)} ${unit}`.trim());
+}
+
+function applyProductToInvoice() {
+  const productSelect = document.getElementById('product_id');
+  const selected = productSelect.options[productSelect.selectedIndex];
+  const qtyInput = document.getElementById('product_quantity');
+  const warning = document.getElementById('productStockWarning');
+
+  if (!selected || !selected.value) {
+    updatePreview();
+    return;
+  }
+
+  const quantity = parseFloat(qtyInput.value) || 0;
+  const stock = parseFloat(selected.dataset.stock) || 0;
+  const price = parseFloat(selected.dataset.price) || 0;
+  const unit = selected.dataset.unit || '';
+
+  if (quantity > stock) {
+    warning.textContent = `Only ${plainQty(stock)} ${unit} available.`;
+    warning.style.display = 'block';
+    qtyInput.setCustomValidity('Quantity exceeds available stock.');
+  } else {
+    warning.style.display = 'none';
+    warning.textContent = '';
+    qtyInput.setCustomValidity('');
+  }
+
+  if (quantity > 0) {
+    document.getElementById('amount').value = (price * quantity).toFixed(2);
+  }
+
+  setGstRate(selected.dataset.gst || 0);
+
+  const notesInput = document.getElementById('notes');
+  if (!notesInput.value || notesInput.dataset.inventoryAutofill === 'true') {
+    notesInput.value = `${selected.dataset.name} (${plainQty(quantity)} ${unit})`.trim();
+    notesInput.dataset.inventoryAutofill = 'true';
+  }
+
+  updatePreview();
+}
+
+function handleProductSelect(sel) {
+  updateProductDetails(sel);
+  applyProductToInvoice();
+}
+
 function prefillFee(sel) {
+  const productSelect = document.getElementById('product_id');
+  if (productSelect && productSelect.value) {
+    return;
+  }
+
   const fee = sel.options[sel.selectedIndex]?.dataset.fee;
   if (fee) {
     document.getElementById('amount').value = fee;
@@ -457,6 +644,13 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize form state
   toggleClientMode();
   handleCustomerSelect(document.getElementById('client_id'));
+  const notesInput = document.getElementById('notes');
+  if (notesInput) {
+    notesInput.addEventListener('input', function() {
+      this.dataset.inventoryAutofill = 'false';
+    });
+  }
+  handleProductSelect(document.getElementById('product_id'));
   updatePreview();
 });
 </script>

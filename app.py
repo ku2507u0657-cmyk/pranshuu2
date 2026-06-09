@@ -22,6 +22,7 @@ def create_app(config_class=None):
     from routes.main     import main_bp
     from routes.auth     import auth_bp
     from routes.clients  import clients_bp
+    from routes.products import products_bp
     from routes.invoices import invoices_bp
     from routes.bills    import bills_bp
     from routes.reports import reports_bp
@@ -30,6 +31,7 @@ def create_app(config_class=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(clients_bp)
+    app.register_blueprint(products_bp)
     app.register_blueprint(invoices_bp)
     app.register_blueprint(bills_bp)
     app.register_blueprint(reports_bp)
@@ -50,9 +52,9 @@ def create_app(config_class=None):
 
     @app.shell_context_processor
     def make_shell_context():
-        from models import Admin, Client, Invoice, Bill
+        from models import Admin, Client, Product, Invoice, Bill
         return {"db": db, "Admin": Admin, "Client": Client,
-                "Invoice": Invoice, "Bill": Bill}
+                "Product": Product, "Invoice": Invoice, "Bill": Bill}
 
     return app
 
@@ -85,6 +87,8 @@ def _ensure_compatible_schema(app):
         },
         "invoices": {
             "transaction_type": "VARCHAR(10) NOT NULL DEFAULT 'in'",
+            "product_id": "INTEGER",
+            "product_quantity": "NUMERIC(12, 3)",
         },
         "bills": {
             "transaction_type": "VARCHAR(10) NOT NULL DEFAULT 'out'",

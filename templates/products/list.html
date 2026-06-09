@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Products - {{ app_name }}{% endblock %}
+{% block page_title %}Products{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-heading">Products</h1>
+    <p class="page-sub">
+      {{ pagination.total }} product{{ 's' if pagination.total != 1 else '' }} shown
+      {% if stats.total != pagination.total %}of {{ stats.total }} total{% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('products.add_product') }}" class="btn-action-primary">
+    <i class="bi bi-plus-lg"></i>
+    Add Product
+  </a>
+</div>
+
+<div class="product-summary-grid">
+  <div class="customer-summary-card">
+    <span class="summary-label">Active Products</span>
+    <strong>{{ stats.total }}</strong>
+  </div>
+  <div class="customer-summary-card">
+    <span class="summary-label">In Stock</span>
+    <strong>{{ stats.in_stock }}</strong>
+  </div>
+  <div class="customer-summary-card">
+    <span class="summary-label">Low Stock</span>
+    <strong>{{ stats.low_stock }}</strong>
+  </div>
+  <div class="customer-summary-card">
+    <span class="summary-label">Out of Stock</span>
+    <strong>{{ stats.out_of_stock }}</strong>
+  </div>
+</div>
+
+<form method="GET" action="{{ url_for('products.list_products') }}" class="search-bar-form product-filter-form">
+  <div class="search-bar-wrap">
+    <i class="bi bi-search search-icon"></i>
+    <input
+      type="search"
+      name="q"
+      class="search-input"
+      placeholder="Search by product, SKU, category or HSN..."
+      value="{{ search }}"
+      autocomplete="off"
+    />
+    {% if search or category or stock_filter %}
+      <a href="{{ url_for('products.list_products') }}" class="search-clear" title="Clear">
+        <i class="bi bi-x-lg"></i>
+      </a>
+    {% endif %}
+  </div>
+
+  <select name="category" class="form-field form-select product-filter-select" aria-label="Category">
+    <option value="">All categories</option>
+    {% for option in categories %}
+      <option value="{{ option }}" {{ 'selected' if category == option }}>{{ option }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="stock" class="form-field form-select product-filter-select" aria-label="Stock">
+    <option value="">All stock</option>
+    <option value="in_stock" {{ 'selected' if stock_filter == 'in_stock' }}>In stock</option>
+    <option value="low_stock" {{ 'selected' if stock_filter == 'low_stock' }}>Low stock</option>
+    <option value="out_of_stock" {{ 'selected' if stock_filter == 'out_of_stock' }}>Out of stock</option>
+  </select>
+
+  <button type="submit" class="btn-search">Apply</button>
+</form>
+
+{% if products %}
+<div class="table-card product-table-card">
+  <table class="data-table product-table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>SKU</th>
+        <th>Category</th>
+        <th>Unit</th>
+        <th>HSN</th>
+        <th class="text-right">GST</th>
+        <th class="text-right">Purchase</th>
+        <th class="text-right">Selling</th>
+        <th>Stock</th>
+        <th class="text-center">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for product in products %}
+      <tr class="table-row">
+        <td>
+          <div class="product-name-cell">
+            <div class="product-icon"><i class="bi bi-box-seam"></i></div>
+            <span>
+              <span class="client-name">{{ product.name }}</span>
+              {% if product.hsn_code %}
+                <small class="cell-subtle">HSN {{ product.hsn_code }}</small>
+              {% endif %}
+            </span>
+          </div>
+        </td>
+        <td><code class="sku-code">{{ product.sku }}</code></td>
+        <td>
+          {% if product.category %}
+            <span class="table-strong">{{ product.category }}</span>
+          {% else %}
+            <span class="table-empty">&mdash;</span>
+          {% endif %}
+        </td>
+        <td>{{ product.unit }}</td>
+        <td>
+          {% if product.hsn_code %}
+            <code class="gst-code">{{ product.hsn_code }}</code>
+          {% else %}
+            <span class="table-empty">&mdash;</span>
+          {% endif %}
+        </td>
+        <td class="text-right mono-num">{{ product.gst_rate_display }}</td>
+        <td class="text-right mono-num">{{ product.purchase_price_display }}</td>
+        <td class="text-right mono-num">{{ product.selling_price_display }}</td>
+        <td>
+          <span class="stock-badge {{ product.stock_status }}">
+            {{ product.stock_display }}
+          </span>
+          <small class="cell-subtle">{{ product.stock_status_label }}</small>
+        </td>
+        <td class="text-center">
+          <div class="row-actions">
+            <a href="{{ url_for('products.edit_product', product_id=product.id) }}"
+               class="row-btn edit" title="Edit product">
+              <i class="bi bi-pencil"></i>
+            </a>
+
+            <button type="button"
+                    class="row-btn delete"
+                    title="Delete product"
+                    onclick="confirmDelete({{ product.name|tojson }}, {{ url_for('products.delete_product', product_id=product.id)|tojson }})">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="pagination-row">
+  <span class="pagination-info">
+    Page {{ pagination.page }} of {{ pagination.pages }}
+  </span>
+  <div class="pagination-btns">
+    {% if pagination.has_prev %}
+      <a href="{{ url_for('products.list_products', page=pagination.prev_num, q=search, category=category, stock=stock_filter) }}"
+         class="pg-btn">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    {% endif %}
+
+    {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ url_for('products.list_products', page=p, q=search, category=category, stock=stock_filter) }}"
+           class="pg-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="pg-ellipsis">...</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+      <a href="{{ url_for('products.list_products', page=pagination.next_num, q=search, category=category, stock=stock_filter) }}"
+         class="pg-btn">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="dash-panel">
+  <div class="empty-state">
+    <div class="empty-icon">
+      {% if search or category or stock_filter %}
+        <i class="bi bi-search"></i>
+      {% else %}
+        <i class="bi bi-box-seam"></i>
+      {% endif %}
+    </div>
+    {% if search or category or stock_filter %}
+      <p class="empty-title">No matching products</p>
+      <p class="empty-sub">Try a different search, category, or stock filter.</p>
+      <a href="{{ url_for('products.list_products') }}" class="btn-dash-action" style="opacity:1;text-decoration:none">
+        Clear filters
+      </a>
+    {% else %}
+      <p class="empty-title">No products yet</p>
+      <p class="empty-sub">Add products to start tracking stock and invoice them faster.</p>
+      <a href="{{ url_for('products.add_product') }}" class="btn-dash-action" style="opacity:1;text-decoration:none">
+        <i class="bi bi-plus-lg"></i> Add Product
+      </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<div id="deleteModal" class="modal-backdrop" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <h3 class="modal-title">Delete Product?</h3>
+    <p class="modal-body">
+      This removes <strong id="deleteProductName"></strong> from active inventory.
+      Existing invoices remain preserved.
+    </p>
+    <div class="modal-actions">
+      <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
+      <form id="deleteForm" method="POST">
+        <button type="submit" class="modal-btn confirm-delete">Delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(name, url) {
+  document.getElementById('deleteProductName').textContent = name;
+  document.getElementById('deleteForm').action = url;
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('deleteModal').style.display = 'none';
+}
+
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}

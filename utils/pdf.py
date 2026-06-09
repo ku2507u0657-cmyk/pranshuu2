@@ -20,6 +20,7 @@ import io
 import os
 import logging
 from datetime import datetime
+from decimal import Decimal
 
 from reportlab.lib            import colors
 from reportlab.lib.pagesizes  import A4
@@ -258,12 +259,22 @@ def _render(invoice, app) -> bytes:
     if invoice.notes:
         desc = invoice.notes
 
+    qty_text = "1"
+    rate_text = invoice.amount_display
+    if getattr(invoice, "product", None):
+        qty = Decimal(str(invoice.product_quantity or 0))
+        qty_text = format(qty.normalize(), "f").rstrip("0").rstrip(".") or "0"
+        if invoice.product.unit:
+            qty_text = f"{qty_text} {invoice.product.unit}"
+        rate_text = invoice.product.selling_price_display
+        desc = f"{desc} - SKU {invoice.product.sku}"
+
     items = [
         [th("Description"), th("Qty", TA_CENTER),
          th("Rate", TA_RIGHT), th("Amount", TA_RIGHT)],
         [td(f"{desc} — {c.name}"),
-         td("1", TA_CENTER),
-         td(invoice.amount_display, TA_RIGHT),
+         td(qty_text, TA_CENTER),
+         td(rate_text, TA_RIGHT),
          td(invoice.amount_display, TA_RIGHT)],
     ]
     items_tbl = Table(items, colWidths=cw, repeatRows=1)
@@ -298,7 +309,7 @@ def _render(invoice, app) -> bytes:
 
     tots = [
         tot("Subtotal (excl. GST)", invoice.amount_display),
-        tot("GST @ 18%",            invoice.gst_display),
+        tot(f"GST @ {invoice.gst_rate_display}", invoice.gst_display),
         tot("Total Payable",         invoice.total_display, bold=True, inv_colors=True),
     ]
     tots_tbl = Table(tots, colWidths=[spacer_w, label_w, value_w])

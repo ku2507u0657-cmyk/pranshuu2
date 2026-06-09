@@ -163,7 +163,11 @@
           <td>
             <strong>{{ invoice.notes or 'Professional Services' }}</strong>
             <div style="font-size:.78rem;color:var(--ink-3);margin-top:2px">
-              {{ invoice.client.name }}
+              {% if invoice.product %}
+                {{ invoice.product.sku }} &middot; Qty {{ invoice.product_quantity|float }} {{ invoice.product.unit }}
+              {% else %}
+                {{ invoice.client.name }}
+              {% endif %}
             </div>
           </td>
           <td class="text-right mono-num">{{ invoice.amount_display }}</td>
@@ -181,7 +185,7 @@
         </div>
         <div style="display:flex;justify-content:space-between;padding:7px 0;
                     font-size:.88rem;border-bottom:1px solid var(--border)">
-          <span style="color:var(--accent)">GST @ 18%</span>
+          <span style="color:var(--accent)">GST @ {{ invoice.gst_rate_display }}</span>
           <span class="mono-num" style="color:var(--accent)">{{ invoice.gst_display }}</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:12px 16px;

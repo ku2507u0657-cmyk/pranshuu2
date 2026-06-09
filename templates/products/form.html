@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% set is_edit = (mode == 'edit') %}
+{% block title %}{{ 'Edit' if is_edit else 'Add' }} Product - {{ app_name }}{% endblock %}
+{% block page_title %}{{ 'Edit' if is_edit else 'Add' }} Product{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb-nav">
+  <a href="{{ url_for('products.list_products') }}">Products</a>
+  <i class="bi bi-chevron-right"></i>
+  {% if is_edit %}
+    <span>Edit</span>
+  {% else %}
+    <span>New Product</span>
+  {% endif %}
+</nav>
+
+<div class="form-card">
+  <div class="form-card-header">
+    <div class="form-card-icon {{ 'amber' if is_edit else 'teal' }}">
+      <i class="bi bi-{{ 'pencil' if is_edit else 'box-seam-fill' }}"></i>
+    </div>
+    <div>
+      <h2 class="form-card-title">{{ 'Edit Product' if is_edit else 'New Product' }}</h2>
+      <p class="form-card-sub">
+        {% if is_edit %}
+          Update inventory, GST, and pricing details for <strong>{{ product.name }}</strong>.
+        {% else %}
+          Add a reusable inventory item for invoices and stock tracking.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <form method="POST"
+        action="{{ url_for('products.edit_product', product_id=product.id) if is_edit else url_for('products.add_product') }}"
+        novalidate class="client-form">
+
+    <div class="form-row two-col">
+      <div class="form-group">
+        <label class="form-label required" for="name">Product Name</label>
+        <div class="input-wrap">
+          <i class="bi bi-box-seam input-icon"></i>
+          <input type="text" id="name" name="name" class="form-field"
+                 placeholder="e.g. Premium Notebook" value="{{ product.name or '' }}"
+                 maxlength="200" required autofocus />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label required" for="sku">Product Code / SKU</label>
+        <div class="input-wrap">
+          <i class="bi bi-upc-scan input-icon"></i>
+          <input type="text" id="sku" name="sku" class="form-field"
+                 placeholder="e.g. NOTE-A5-001" value="{{ product.sku or '' }}"
+                 maxlength="80" required />
+        </div>
+        <span class="form-hint">SKU must be unique in your inventory.</span>
+      </div>
+    </div>
+
+    <div class="form-row two-col">
+      <div class="form-group">
+        <label class="form-label" for="category">Category</label>
+        <div class="input-wrap">
+          <i class="bi bi-tags input-icon"></i>
+          <input type="text" id="category" name="category" class="form-field"
+                 placeholder="e.g. Stationery" value="{{ product.category or '' }}"
+                 maxlength="120" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label required" for="unit">Unit</label>
+        <div class="input-wrap">
+          <i class="bi bi-rulers input-icon"></i>
+          <input type="text" id="unit" name="unit" class="form-field"
+                 placeholder="pcs, kg, litre, box" value="{{ product.unit or 'pcs' }}"
+                 maxlength="40" list="unit-options" required />
+          <datalist id="unit-options">
+            <option value="pcs"></option>
+            <option value="kg"></option>
+            <option value="gram"></option>
+            <option value="litre"></option>
+            <option value="metre"></option>
+            <option value="box"></option>
+          </datalist>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row two-col">
+      <div class="form-group">
+        <label class="form-label" for="hsn_code">HSN Code</label>
+        <div class="input-wrap">
+          <i class="bi bi-file-earmark-text input-icon"></i>
+          <input type="text" id="hsn_code" name="hsn_code" class="form-field"
+                 placeholder="e.g. 482010" value="{{ product.hsn_code or '' }}"
+                 maxlength="20" pattern="[A-Za-z0-9]+" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label required" for="gst_rate">GST Rate (%)</label>
+        <div class="input-wrap">
+          <i class="bi bi-percent input-icon"></i>
+          <input type="number" id="gst_rate" name="gst_rate" class="form-field"
+                 placeholder="18" min="0" max="100" step="0.01"
+                 value="{{ '%.2f'|format(product.gst_rate|float) if product.gst_rate is not none else '18.00' }}"
+                 required />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row two-col">
+      <div class="form-group">
+        <label class="form-label required" for="purchase_price">Purchase Price</label>
+        <div class="input-wrap">
+          <span class="input-prefix">Rs</span>
+          <input type="number" id="purchase_price" name="purchase_price"
+                 class="form-field has-prefix has-wide-prefix"
+                 placeholder="0.00" min="0" step="0.01"
+                 value="{{ '%.2f'|format(product.purchase_price|float) if product.purchase_price is not none else '0.00' }}"
+                 required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label required" for="selling_price">Selling Price</label>
+        <div class="input-wrap">
+          <span class="input-prefix">Rs</span>
+          <input type="number" id="selling_price" name="selling_price"
+                 class="form-field has-prefix has-wide-prefix"
+                 placeholder="0.00" min="0.01" step="0.01"
+                 value="{{ '%.2f'|format(product.selling_price|float) if product.selling_price is not none else '0.00' }}"
+                 required />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label class="form-label required" for="current_stock">Current Stock</label>
+        <div class="input-wrap">
+          <i class="bi bi-boxes input-icon"></i>
+          <input type="number" id="current_stock" name="current_stock"
+                 class="form-field"
+                 placeholder="0" min="0" step="0.001"
+                 value="{{ '%.3f'|format(product.current_stock|float) if product.current_stock is not none else '0.000' }}"
+                 required />
+        </div>
+        <span class="form-hint">Invoices can only use quantities available in stock.</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('products.list_products') }}" class="btn-cancel">
+        <i class="bi bi-x-lg"></i> Cancel
+      </a>
+      <button type="submit" class="btn-submit">
+        <i class="bi bi-{{ 'check-lg' if is_edit else 'plus-lg' }}"></i>
+        {{ 'Save Changes' if is_edit else 'Add Product' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+{% if is_edit %}
+<div class="danger-zone">
+  <div class="danger-zone-header"><i class="bi bi-exclamation-triangle-fill"></i> Danger Zone</div>
+  <div class="danger-zone-body">
+    <div>
+      <strong>Remove this product</strong>
+      <p>Marks {{ product.name }} as inactive. Existing invoice history is preserved.</p>
+    </div>
+    <button type="button" class="btn-danger"
+            onclick="confirmDelete({{ product.name|tojson }}, {{ url_for('products.delete_product', product_id=product.id)|tojson }})">
+      <i class="bi bi-trash3"></i> Remove Product
+    </button>
+  </div>
+</div>
+
+<div id="deleteModal" class="modal-backdrop" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
+    <h3 class="modal-title">Remove Product?</h3>
+    <p class="modal-body">Remove <strong id="deleteProductName"></strong>? Existing invoice history is preserved.</p>
+    <div class="modal-actions">
+      <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
+      <form id="deleteForm" method="POST">
+        <button type="submit" class="modal-btn confirm-delete">Remove</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if is_edit %}
+<script>
+function confirmDelete(name, url) {
+  document.getElementById('deleteProductName').textContent = name;
+  document.getElementById('deleteForm').action = url;
+  document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeModal() {
+  document.getElementById('deleteModal').style.display = 'none';
+}
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endif %}
+{% endblock %}

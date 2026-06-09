@@ -137,6 +137,96 @@ class Client(db.Model):
 #  Invoice  (scoped to owner Admin)
 # ─────────────────────────────────────────────────────────────
 
+# ------------------------------------------------------------
+#  Product  (inventory records scoped to owner Admin)
+# ------------------------------------------------------------
+
+class Product(db.Model):
+    __tablename__ = "products"
+    __table_args__ = (
+        db.UniqueConstraint("owner_id", "sku", name="unique_owner_product_sku"),
+    )
+
+    id             = db.Column(db.Integer, primary_key=True)
+    owner_id       = db.Column(db.Integer, db.ForeignKey("admins.id"),
+                                nullable=False, index=True)
+    name           = db.Column(db.String(200), nullable=False, index=True)
+    sku            = db.Column(db.String(80), nullable=False, index=True)
+    category       = db.Column(db.String(120), nullable=True, index=True)
+    unit           = db.Column(db.String(40), nullable=False, default="pcs")
+    hsn_code       = db.Column(db.String(20), nullable=True, index=True)
+    gst_rate       = db.Column(db.Numeric(5, 2), nullable=False, default=18.00)
+    purchase_price = db.Column(db.Numeric(12, 2), nullable=False, default=0.00)
+    selling_price  = db.Column(db.Numeric(12, 2), nullable=False, default=0.00)
+    current_stock  = db.Column(db.Numeric(12, 3), nullable=False, default=0.000)
+    is_active      = db.Column(db.Boolean, default=True, nullable=False)
+    created_at     = db.Column(db.DateTime, nullable=False,
+                                default=lambda: datetime.now(timezone.utc))
+    updated_at     = db.Column(db.DateTime, nullable=False,
+                                default=lambda: datetime.now(timezone.utc),
+                                onupdate=lambda: datetime.now(timezone.utc))
+
+    owner = db.relationship("Admin", backref=db.backref("products", lazy="dynamic"))
+    invoices = db.relationship("Invoice", back_populates="product", lazy="dynamic")
+
+    @staticmethod
+    def _quantity_text(value):
+        qty = Decimal(str(value or 0))
+        return format(qty.normalize(), "f").rstrip("0").rstrip(".") or "0"
+
+    @property
+    def purchase_price_display(self):
+        return f"Rs {float(self.purchase_price or 0):,.2f}"
+
+    @property
+    def selling_price_display(self):
+        return f"Rs {float(self.selling_price or 0):,.2f}"
+
+    @property
+    def gst_rate_display(self):
+        return f"{float(self.gst_rate or 0):g}%"
+
+    @property
+    def stock_display(self):
+        return f"{self._quantity_text(self.current_stock)} {self.unit or ''}".strip()
+
+    @property
+    def stock_status(self):
+        stock = Decimal(str(self.current_stock or 0))
+        if stock <= 0:
+            return "out"
+        if stock <= Decimal("5"):
+            return "low"
+        return "ok"
+
+    @property
+    def stock_status_label(self):
+        return {
+            "ok": "In stock",
+            "low": "Low stock",
+            "out": "Out of stock",
+        }[self.stock_status]
+
+    def __repr__(self):
+        return f"<Product id={self.id} sku={self.sku!r} name={self.name!r}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "sku": self.sku,
+            "category": self.category,
+            "unit": self.unit,
+            "hsn_code": self.hsn_code,
+            "gst_rate": float(self.gst_rate or 0),
+            "purchase_price": float(self.purchase_price or 0),
+            "selling_price": float(self.selling_price or 0),
+            "current_stock": float(self.current_stock or 0),
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat(),
+        }
+
+
 class InvoiceStatus:
     UNPAID  = "unpaid"
     PAID    = "paid"
@@ -153,6 +243,9 @@ class Invoice(db.Model):
     invoice_number = db.Column(db.String(20),     unique=True, nullable=False, index=True)
     client_id      = db.Column(db.Integer,        db.ForeignKey("clients.id"),
                                 nullable=False, index=True)
+    product_id     = db.Column(db.Integer,        db.ForeignKey("products.id"),
+                                nullable=True, index=True)
+    product_quantity = db.Column(db.Numeric(12, 3), nullable=True)
     amount         = db.Column(db.Numeric(10, 2), nullable=False)
     gst            = db.Column(db.Numeric(10, 2), nullable=False)
     gst_rate       = db.Column(db.Numeric(5, 2),  nullable=False, default=18.00)
@@ -170,6 +263,7 @@ class Invoice(db.Model):
 
     owner  = db.relationship("Admin", backref=db.backref("invoices", lazy="dynamic"))
     client = db.relationship("Client", back_populates="invoices")
+    product = db.relationship("Product", back_populates="invoices")
 
     @classmethod
     def next_invoice_number(cls, owner_id=None):
@@ -255,6 +349,11 @@ class Invoice(db.Model):
             "id": self.id, "invoice_number": self.invoice_number,
             "client_id": self.client_id,
             "client_name": self.client.name if self.client else None,
+            "product_id": self.product_id,
+            "product_name": self.product.name if self.product else None,
+            "product_quantity": (
+                float(self.product_quantity) if self.product_quantity is not None else None
+            ),
             "amount": float(self.amount), "gst": float(self.gst),
             "gst_rate": float(self.gst_rate) if self.gst_rate else 18.0,
             "total": float(self.total),

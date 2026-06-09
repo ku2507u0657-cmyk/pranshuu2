@@ -6,6 +6,7 @@ Includes: list, view, create, mark-paid, delete, download PDF, CSV export, resen
 import logging
 import os
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from flask import (
     Blueprint, render_template, redirect, url_for,
@@ -13,7 +14,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from extensions import db
-from models import Invoice, InvoiceStatus, Client
+from models import Invoice, InvoiceStatus, Client, Product
 from utils.customer_validation import (
     find_customer_by_phone,
     validate_email_address,
@@ -26,6 +27,19 @@ invoices_bp = Blueprint("invoices", __name__, url_prefix="/invoices")
 
 def _owned_invoice(invoice_id):
     return Invoice.query.filter_by(id=invoice_id, owner_id=current_user.id).first_or_404()
+
+
+def _parse_invoice_quantity(raw):
+    try:
+        quantity = Decimal((raw or "").strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return quantity.quantize(Decimal("0.001"))
+
+
+def _quantity_text(quantity):
+    value = Decimal(str(quantity or 0))
+    return format(value.normalize(), "f").rstrip("0").rstrip(".") or "0"
 
 
 @invoices_bp.route("/")
@@ -125,6 +139,9 @@ def create_invoice():
     clients = (Client.query
                .filter_by(owner_id=current_user.id, is_active=True)
                .order_by(Client.name.asc()).all())
+    products = (Product.query
+                .filter_by(owner_id=current_user.id, is_active=True)
+                .order_by(Product.name.asc()).all())
     preselected_client_id = request.args.get("client_id", type=int)
     default_due = (date.today() + timedelta(days=30)).isoformat()
 
@@ -136,10 +153,20 @@ def create_invoice():
         notes      = request.form.get("notes",     "").strip()
         gst_rate_s = request.form.get("gst_rate",  "18").strip()
         transaction_type = request.form.get("transaction_type", "in").strip()
+        product_id_raw = request.form.get("product_id", "").strip()
+        product_quantity_raw = request.form.get("product_quantity", "").strip()
 
         errors = []
         client_id = None
         pending_guest = None
+        selected_product = None
+        product_quantity = None
+        product_stock_on_hand = None
+        amount = None
+        gst_rate = None
+
+        if transaction_type not in {"in", "out"}:
+            errors.append("Transaction type is invalid.")
 
         if client_type == "one-time":
             guest_name = request.form.get("guest_name", "").strip()
@@ -185,16 +212,62 @@ def create_invoice():
                 except ValueError:
                     errors.append("Selected customer is invalid.")
 
-        # --- Core Invoice Validations (Kept exact same) ---
-        if not amount_raw:
-            errors.append("Amount is required.")
-        else:
+        if product_id_raw:
             try:
-                amount = float(amount_raw)
-                if amount <= 0:
-                    errors.append("Amount must be greater than zero.")
+                selected_product_id = int(product_id_raw)
             except ValueError:
-                errors.append("Amount must be a valid number.")
+                selected_product_id = None
+                errors.append("Selected product is invalid.")
+
+            if selected_product_id:
+                selected_product = Product.query.filter_by(
+                    id=selected_product_id,
+                    owner_id=current_user.id,
+                    is_active=True,
+                ).first()
+                if not selected_product:
+                    errors.append("Selected product not found.")
+
+            if selected_product:
+                if not product_quantity_raw:
+                    errors.append("Product quantity is required.")
+                else:
+                    product_quantity = _parse_invoice_quantity(product_quantity_raw)
+                    if product_quantity is None:
+                        errors.append("Product quantity must be a valid number.")
+                    elif product_quantity <= 0:
+                        errors.append("Product quantity must be greater than zero.")
+
+                if product_quantity is not None and product_quantity > 0:
+                    product_stock_on_hand = Decimal(str(selected_product.current_stock or 0))
+                    if product_quantity > product_stock_on_hand:
+                        errors.append(
+                            f"Only {selected_product.stock_display} is available for {selected_product.name}."
+                        )
+
+                selling_price = Decimal(str(selected_product.selling_price or 0))
+                if selling_price <= 0:
+                    errors.append("Selected product must have a selling price greater than zero.")
+
+                if product_quantity is not None and product_quantity > 0 and selling_price > 0:
+                    amount_decimal = (selling_price * product_quantity).quantize(
+                        Decimal("0.01"),
+                        rounding=ROUND_HALF_UP,
+                    )
+                    amount = float(amount_decimal)
+                    gst_rate = float(selected_product.gst_rate or 0)
+
+        # --- Core Invoice Validations (Kept exact same) ---
+        if not selected_product:
+            if not amount_raw:
+                errors.append("Amount is required.")
+            else:
+                try:
+                    amount = float(amount_raw)
+                    if amount <= 0:
+                        errors.append("Amount must be greater than zero.")
+                except ValueError:
+                    errors.append("Amount must be a valid number.")
 
         if not due_date_s:
             errors.append("Due date is required.")
@@ -204,18 +277,19 @@ def create_invoice():
             except ValueError:
                 errors.append("Due date format is invalid.")
 
-        try:
-            gst_rate = float(gst_rate_s)
-            if gst_rate < 0 or gst_rate > 100:
-                errors.append("GST rate must be between 0 and 100.")
-        except ValueError:
-            gst_rate = 18.0
+        if not selected_product:
+            try:
+                gst_rate = float(gst_rate_s)
+                if gst_rate < 0 or gst_rate > 100:
+                    errors.append("GST rate must be between 0 and 100.")
+            except ValueError:
+                gst_rate = 18.0
 
         if errors:
             for err in errors:
                 flash(err, "danger")
             return render_template("invoices/create.html",
-                clients=clients, form=request.form,
+                clients=clients, products=products, form=request.form,
                 default_due=default_due, today=date.today(),
                 preselected_client_id=preselected_client_id,
                 app_name=current_app.config.get("APP_NAME"))
@@ -232,6 +306,10 @@ def create_invoice():
             db.session.flush()
             client_id = new_client.id
 
+        if selected_product and not notes:
+            qty_text = _quantity_text(product_quantity)
+            notes = f"{selected_product.name} ({qty_text} {selected_product.unit})"
+
         gst_amount, total = Invoice.calculate_gst(amount, rate=gst_rate)
 
         invoice = Invoice(
@@ -245,10 +323,15 @@ def create_invoice():
             due_date         = due_date,
             status           = InvoiceStatus.UNPAID,
             notes            = notes or None,
-            transaction_type = transaction_type
+            transaction_type = transaction_type,
+            product_id       = selected_product.id if selected_product else None,
+            product_quantity = product_quantity if selected_product else None,
         )
         db.session.add(invoice)
         db.session.flush()
+
+        if selected_product and product_quantity is not None:
+            selected_product.current_stock = product_stock_on_hand - product_quantity
 
         app = current_app._get_current_object()
         try:
@@ -264,7 +347,7 @@ def create_invoice():
         return redirect(url_for("invoices.view_invoice", invoice_id=invoice.id))
 
     return render_template("invoices/create.html",
-        clients=clients, form={},
+        clients=clients, products=products, form={},
         preselected_client_id=preselected_client_id,
         default_due=default_due, today=date.today(),
         app_name=current_app.config.get("APP_NAME", "InvoiceFlow"),
