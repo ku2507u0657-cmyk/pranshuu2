@@ -194,10 +194,21 @@ def _render(bill, app) -> bytes:
              th("GST%", TA_CENTER), th("GST Amt", TA_RIGHT), th("Total", TA_RIGHT)]]
 
     for i, item in enumerate(bill.items, 1):
+        description = item.description or ""
+        if getattr(item, "product", None):
+            product_bits = [f"SKU {item.product.sku}"]
+            if item.product.unit:
+                product_bits.append(f"Unit {item.product.unit}")
+            if item.product.hsn_code:
+                product_bits.append(f"HSN {item.product.hsn_code}")
+            product_meta = " | ".join(product_bits)
+            if product_meta and product_meta not in description:
+                description = f"{description} | {product_meta}" if description else product_meta
+
         rows.append([
             td(str(i), TA_CENTER),
             td(item.item_name, bold=True, color=INK),
-            td(item.description or "", color=INK_3),
+            td(description, color=INK_3),
             td(f"{float(item.quantity):g}", TA_RIGHT),
             td(f"{INR}{float(item.rate):,.2f}", TA_RIGHT),
             td(item.gst_rate_display, TA_CENTER),

@@ -181,6 +181,11 @@
                          font-weight:600; border-bottom:1px solid #E4E0D8;
                          {% if loop.last %}border-bottom:none;{% endif %}">
                 {{ item.item_name }}
+                {% if item.product %}
+                <div style="font-size:11px; color:#8A8480; font-weight:400; margin-top:2px;">
+                  {{ item.product.sku }}{% if item.product.unit %} &middot; {{ item.product.unit }}{% endif %}
+                </div>
+                {% endif %}
                 {% if item.description %}
                 <div style="font-size:11px; color:#8A8480; font-weight:400; margin-top:2px;">
                   {{ item.description }}

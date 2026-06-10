@@ -168,6 +168,7 @@ class Product(db.Model):
 
     owner = db.relationship("Admin", backref=db.backref("products", lazy="dynamic"))
     invoices = db.relationship("Invoice", back_populates="product", lazy="dynamic")
+    bill_items = db.relationship("BillItem", back_populates="product", lazy="dynamic")
 
     @staticmethod
     def _quantity_text(value):
@@ -471,6 +472,8 @@ class BillItem(db.Model):
     id           = db.Column(db.Integer,        primary_key=True)
     bill_id      = db.Column(db.Integer,        db.ForeignKey("bills.id"),
                               nullable=False, index=True)
+    product_id   = db.Column(db.Integer,        db.ForeignKey("products.id"),
+                              nullable=True, index=True)
     item_name    = db.Column(db.String(200),    nullable=False)
     description  = db.Column(db.String(300),    nullable=True)
     quantity     = db.Column(db.Numeric(10, 3), nullable=False, default=1)
@@ -481,6 +484,7 @@ class BillItem(db.Model):
     item_total   = db.Column(db.Numeric(12, 2), nullable=False, default=0)
 
     bill = db.relationship("Bill", back_populates="items")
+    product = db.relationship("Product", back_populates="bill_items")
 
     def calculate(self):
         qty     = Decimal(str(self.quantity))
@@ -499,10 +503,6 @@ class BillItem(db.Model):
     @property
     def total_display(self):
         return f"\u20b9{float(self.item_total):,.2f}"
-    
-    @property
-    def total_display(self):
-        return self.grand_total_display
 
     @property
     def gst_rate_display(self):

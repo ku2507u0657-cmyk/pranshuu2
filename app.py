@@ -93,6 +93,9 @@ def _ensure_compatible_schema(app):
         "bills": {
             "transaction_type": "VARCHAR(10) NOT NULL DEFAULT 'out'",
         },
+        "bill_items": {
+            "product_id": "INTEGER",
+        },
     }
 
     try:

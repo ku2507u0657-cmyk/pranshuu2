@@ -74,13 +74,17 @@
           <label class="form-label required">Transaction Type</label>
           <div class="transaction-toggle">
             <label>
-              <input type="radio" name="transaction_type" value="in">
+              <input type="radio" name="transaction_type" value="in"
+                     {{ 'checked' if form.get('transaction_type', 'out') == 'in' }}
+                     onchange="syncProductRows()">
               <span class="toggle-pill money-in">
                 <i class="bi bi-box-arrow-in-down-left"></i> Money In
               </span>
             </label>
             <label>
-              <input type="radio" name="transaction_type" value="out" checked>
+              <input type="radio" name="transaction_type" value="out"
+                     {{ 'checked' if form.get('transaction_type', 'out') == 'out' }}
+                     onchange="syncProductRows()">
               <span class="toggle-pill money-out">
                 <i class="bi bi-box-arrow-up-right"></i> Money Out
               </span>
@@ -187,14 +191,15 @@
       <table class="data-table" id="itemsTable">
         <thead>
           <tr>
-            <th style="width:22%">Item Name <span style="color:var(--red)">*</span></th>
-            <th style="width:18%">Description</th>
-            <th style="width:9%">Qty <span style="color:var(--red)">*</span></th>
-            <th style="width:13%">Rate (₹) <span style="color:var(--red)">*</span></th>
-            <th style="width:10%">GST %</th>
-            <th style="width:11%" class="text-right">Amount</th>
-            <th style="width:11%" class="text-right">GST Amt</th>
-            <th style="width:11%" class="text-right">Total</th>
+            <th style="width:18%">Inventory Product</th>
+            <th style="width:18%">Item Name <span style="color:var(--red)">*</span></th>
+            <th style="width:16%">Description</th>
+            <th style="width:8%">Qty <span style="color:var(--red)">*</span></th>
+            <th style="width:12%">Rate (₹) <span style="color:var(--red)">*</span></th>
+            <th style="width:8%">GST %</th>
+            <th style="width:10%" class="text-right">Amount</th>
+            <th style="width:10%" class="text-right">GST Amt</th>
+            <th style="width:10%" class="text-right">Total</th>
             <th style="width:4%" class="text-center"></th>
           </tr>
         </thead>
@@ -202,7 +207,7 @@
           </tbody>
         <tfoot>
           <tr style="background:var(--bg)">
-            <td colspan="5" style="padding:10px 16px;font-size:.8rem;color:var(--ink-3)">
+            <td colspan="6" style="padding:10px 16px;font-size:.8rem;color:var(--ink-3)">
               <button type="button" onclick="addRow()" class="qa-btn active"
                       style="border:none;padding:6px 12px;font-size:.8rem">
                 <i class="bi bi-plus-lg"></i> Add Row
@@ -262,6 +267,25 @@
 <template id="rowTemplate">
   <tr class="item-row">
     <td style="padding:8px 8px">
+      <select name="product_id[]" class="form-field form-select row-product"
+              onchange="handleProductSelect(this)" style="min-width:170px;padding-left:8px">
+        <option value="">Manual item</option>
+        {% for product in products %}
+        <option value="{{ product.id }}"
+                data-name="{{ product.name }}"
+                data-sku="{{ product.sku }}"
+                data-unit="{{ product.unit }}"
+                data-hsn="{{ product.hsn_code or '' }}"
+                data-gst="{{ product.gst_rate|float }}"
+                data-purchase-price="{{ '%.2f'|format(product.purchase_price|float) }}"
+                data-selling-price="{{ '%.2f'|format(product.selling_price|float) }}"
+                data-stock="{{ '%.3f'|format(product.current_stock|float) }}">
+          {{ product.name }} - {{ product.sku }} ({{ product.stock_display }})
+        </option>
+        {% endfor %}
+      </select>
+    </td>
+    <td style="padding:8px 8px">
       <input type="text" name="item_name[]" class="form-field"
              placeholder="e.g. Rice 5kg" required style="min-width:120px" />
     </td>
@@ -271,14 +295,14 @@
     </td>
     <td style="padding:8px 8px">
       <input type="number" name="quantity[]" class="form-field row-qty"
-             placeholder="1" min="0.001" step="0.001" value="1"
+             placeholder="1" min="0" step="1" value="1"
              style="min-width:55px" oninput="recalcRow(this)" />
     </td>
     <td style="padding:8px 8px">
       <div class="input-wrap" style="min-width:90px">
         <span class="input-prefix">₹</span>
         <input type="number" name="rate[]" class="form-field has-prefix row-rate"
-               placeholder="0.00" min="0" step="0.01" value="0"
+               placeholder="0.00" min="0" step="1" value="0"
                oninput="recalcRow(this)" />
       </div>
     </td>
@@ -336,6 +360,67 @@ const GST_SLABS = [0, 5, 12, 18, 28];
 
 function fmt(n) {
   return parseFloat(n||0).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function selectedTransactionType() {
+  return document.querySelector('input[name="transaction_type"]:checked')?.value || 'out';
+}
+
+function productRate(option) {
+  const key = selectedTransactionType() === 'out' ? 'purchasePrice' : 'sellingPrice';
+  return parseFloat(option.dataset[key] || 0).toFixed(2);
+}
+
+function setGstValue(select, value) {
+  const parsed = parseFloat(value) || 0;
+  let option = Array.from(select.options).find(opt => parseFloat(opt.value) === parsed);
+  if (!option) {
+    const label = (parsed % 1 === 0 ? parsed.toString() : parsed.toFixed(2)) + '%';
+    option = new Option(label, parsed.toString());
+    select.add(option);
+  }
+  select.value = option.value;
+}
+
+function productDescription(option) {
+  const parts = [];
+  if (option.dataset.sku) parts.push(`SKU ${option.dataset.sku}`);
+  if (option.dataset.unit) parts.push(`Unit ${option.dataset.unit}`);
+  if (option.dataset.hsn) parts.push(`HSN ${option.dataset.hsn}`);
+  return parts.join(' | ');
+}
+
+function handleProductSelect(sel) {
+  const row = sel.closest('tr');
+  if (!row) return;
+
+  if (!sel.value) {
+    recalcRow(sel);
+    return;
+  }
+
+  const option = sel.options[sel.selectedIndex];
+  row.querySelector('input[name="item_name[]"]').value = option.dataset.name || option.textContent.trim();
+  row.querySelector('input[name="description[]"]').value = productDescription(option);
+  row.querySelector('.row-rate').value = productRate(option);
+  setGstValue(row.querySelector('.row-gst'), option.dataset.gst);
+
+  const qtyInput = row.querySelector('.row-qty');
+  if (!qtyInput.value || parseFloat(qtyInput.value) <= 0) {
+    qtyInput.value = '1';
+  }
+
+  recalcRow(sel);
+}
+
+function syncProductRows() {
+  document.querySelectorAll('#itemsBody .row-product').forEach(sel => {
+    if (!sel.value) return;
+    const row = sel.closest('tr');
+    const option = sel.options[sel.selectedIndex];
+    row.querySelector('.row-rate').value = productRate(option);
+    recalcRow(sel);
+  });
 }
 
 function addRow() {

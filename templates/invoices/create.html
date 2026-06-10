@@ -245,7 +245,7 @@
           <div class="input-wrap">
             <i class="bi bi-boxes input-icon"></i>
             <input type="number" id="product_quantity" name="product_quantity" class="form-field"
-                   placeholder="1" min="0.001" step="0.001"
+                   placeholder="1" min="0" step="1"
                    value="{{ form.get('product_quantity','1') }}"
                    oninput="applyProductToInvoice()" />
           </div>
@@ -259,7 +259,7 @@
           <div class="input-wrap">
             <span class="input-prefix">₹</span>
             <input type="number" id="amount" name="amount" class="form-field has-prefix"
-                   placeholder="0.00" step="0.01" min="0.01"
+                   placeholder="0.00" step="1" min="0"
                    value="{{ form.get('amount','') }}"
                    oninput="updatePreview()" required />
           </div>
@@ -311,7 +311,7 @@
             <div class="input-wrap">
               <i class="bi bi-percent input-icon"></i>
               <input type="number" id="custom_gst_input" class="form-field"
-                     placeholder="e.g. 3" min="0" max="100" step="0.01"
+                     placeholder="e.g. 3" min="0" max="100" step="1"
                      value="{{ form.get('gst_rate','') if form.get('gst_rate','') not in ['0','5','12','18','28'] else '' }}"
                      oninput="applyCustomRate(this.value)" />
             </div>

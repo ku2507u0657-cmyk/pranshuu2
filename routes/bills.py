@@ -6,6 +6,7 @@ Includes: list, create, view, mark-paid, delete, download PDF, resend email.
 import logging
 import os
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 
 from flask import (
     Blueprint, render_template, redirect, url_for,
@@ -13,7 +14,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from extensions import db
-from models import Bill, BillItem, BillStatus, Client
+from models import Bill, BillItem, BillStatus, Client, Product
 from utils.customer_validation import (
     find_customer_by_phone,
     validate_email_address,
@@ -22,6 +23,9 @@ from utils.customer_validation import (
 
 logger = logging.getLogger(__name__)
 bills_bp = Blueprint("bills", __name__, url_prefix="/bills")
+
+QUANTITY_PLACES = Decimal("0.001")
+MONEY_PLACES = Decimal("0.01")
 
 
 def _owned_bill(bill_id):
@@ -82,6 +86,9 @@ def create_bill(client_id=None):
     clients = (Client.query
                .filter_by(owner_id=current_user.id, is_active=True)
                .order_by(Client.name.asc()).all())
+    products = (Product.query
+                .filter_by(owner_id=current_user.id, is_active=True)
+                .order_by(Product.name.asc()).all())
     default_due = (date.today() + timedelta(days=30)).isoformat()
     preselected = client_id
 
@@ -95,6 +102,7 @@ def create_bill(client_id=None):
 
         item_names   = request.form.getlist("item_name[]")
         descriptions = request.form.getlist("description[]")
+        product_ids  = request.form.getlist("product_id[]")
         quantities   = request.form.getlist("quantity[]")
         rates        = request.form.getlist("rate[]")
         gst_rates    = request.form.getlist("item_gst_rate[]")
@@ -102,6 +110,9 @@ def create_bill(client_id=None):
         errors = []
         cid = None
         pending_guest = None
+
+        if transaction_type not in {"in", "out"}:
+            errors.append("Transaction type is invalid.")
 
         if client_type == "one-time":
             guest_name = request.form.get("guest_name", "").strip()
@@ -148,27 +159,105 @@ def create_bill(client_id=None):
                     errors.append("Selected customer/vendor is invalid.")
 
         valid_items = []
-        for i, name in enumerate(item_names):
-            name = name.strip()
-            if not name:
+        stock_movements = {}
+        row_count = max(
+            len(item_names),
+            len(descriptions),
+            len(product_ids),
+            len(quantities),
+            len(rates),
+            len(gst_rates),
+        )
+
+        for i in range(row_count):
+            row_num = i + 1
+            name = item_names[i].strip() if i < len(item_names) else ""
+            desc = descriptions[i].strip() if i < len(descriptions) else ""
+            product_id_raw = product_ids[i].strip() if i < len(product_ids) else ""
+            selected_product = None
+
+            if not name and not product_id_raw:
                 continue
+
+            if product_id_raw:
+                try:
+                    selected_product_id = int(product_id_raw)
+                except ValueError:
+                    selected_product_id = None
+                    errors.append(f"Row {row_num}: Selected product is invalid.")
+
+                if selected_product_id:
+                    selected_product = Product.query.filter_by(
+                        id=selected_product_id,
+                        owner_id=current_user.id,
+                        is_active=True,
+                    ).first()
+                    if not selected_product:
+                        errors.append(f"Row {row_num}: Selected product not found.")
+                        continue
+
+                if selected_product and not name:
+                    name = selected_product.name
+
+            if not name:
+                errors.append(f"Row {row_num}: Item name is required.")
+                continue
+
             try:
-                qty  = float(quantities[i]) if i < len(quantities) else 1
-                rate = float(rates[i])      if i < len(rates)      else 0
-                gst  = float(gst_rates[i])  if i < len(gst_rates)  else 0
+                qty_raw = quantities[i].strip() if i < len(quantities) else "1"
+                rate_raw = rates[i].strip() if i < len(rates) else "0"
+                gst_raw = gst_rates[i].strip() if i < len(gst_rates) else "0"
+                qty = Decimal(qty_raw or "1").quantize(QUANTITY_PLACES)
+                rate = Decimal(rate_raw or "0").quantize(MONEY_PLACES)
+                gst = Decimal(gst_raw or "0").quantize(MONEY_PLACES)
                 if qty <= 0:
-                    errors.append(f"Row {i+1}: Quantity must be > 0.")
+                    errors.append(f"Row {row_num}: Quantity must be > 0.")
                     continue
+                if rate < 0:
+                    errors.append(f"Row {row_num}: Rate cannot be negative.")
+                    continue
+                if gst < 0 or gst > 100:
+                    errors.append(f"Row {row_num}: GST rate must be between 0 and 100.")
+                    continue
+
+                if selected_product and not desc:
+                    parts = [f"SKU {selected_product.sku}"]
+                    if selected_product.unit:
+                        parts.append(f"Unit {selected_product.unit}")
+                    if selected_product.hsn_code:
+                        parts.append(f"HSN {selected_product.hsn_code}")
+                    desc = " | ".join(parts)
+
                 valid_items.append({
                     "name": name,
-                    "desc": (descriptions[i].strip() if i < len(descriptions) else ""),
-                    "qty": qty, "rate": rate, "gst": gst,
+                    "desc": desc,
+                    "qty": qty,
+                    "rate": rate,
+                    "gst": gst,
+                    "product": selected_product,
+                    "product_id": selected_product.id if selected_product else None,
                 })
-            except (ValueError, IndexError):
-                errors.append(f"Row {i+1}: Invalid number.")
+
+                if selected_product:
+                    movement = qty if transaction_type == "out" else -qty
+                    stock_movements.setdefault(
+                        selected_product.id,
+                        {"product": selected_product, "delta": Decimal("0")},
+                    )
+                    stock_movements[selected_product.id]["delta"] += movement
+            except (InvalidOperation, ValueError, IndexError):
+                errors.append(f"Row {row_num}: Invalid number.")
 
         if not valid_items:
             errors.append("Add at least one item.")
+
+        for movement in stock_movements.values():
+            product = movement["product"]
+            current_stock = Decimal(str(product.current_stock or 0))
+            if current_stock + movement["delta"] < 0:
+                errors.append(
+                    f"Only {product.stock_display} is available for {product.name}."
+                )
 
         due_date = None
         if due_raw:
@@ -181,7 +270,7 @@ def create_bill(client_id=None):
             for e in errors:
                 flash(e, "danger")
             return render_template("bills/create.html",
-                clients=clients, default_due=default_due,
+                clients=clients, products=products, default_due=default_due,
                 preselected=int(cid) if cid else preselected,
                 form=request.form,
                 app_name=current_app.config.get("APP_NAME"),
@@ -214,6 +303,7 @@ def create_bill(client_id=None):
         for item_data in valid_items:
             item = BillItem(
                 bill_id     = bill.id,
+                product_id  = item_data["product_id"],
                 item_name   = item_data["name"],
                 description = item_data["desc"] or None,
                 quantity    = item_data["qty"],
@@ -222,6 +312,10 @@ def create_bill(client_id=None):
             )
             item.calculate()
             db.session.add(item)
+
+        for movement in stock_movements.values():
+            product = movement["product"]
+            product.current_stock = Decimal(str(product.current_stock or 0)) + movement["delta"]
 
         db.session.flush()
         bill.recalculate_totals()
@@ -240,7 +334,7 @@ def create_bill(client_id=None):
         return redirect(url_for("bills.view_bill", bill_id=bill.id))
 
     return render_template("bills/create.html",
-        clients=clients, default_due=default_due,
+        clients=clients, products=products, default_due=default_due,
         preselected=preselected, form={},
         app_name=current_app.config.get("APP_NAME", "InvoiceFlow"),
     )

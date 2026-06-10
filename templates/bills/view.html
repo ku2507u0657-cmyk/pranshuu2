@@ -150,7 +150,14 @@
         {% for item in bill.items %}
         <tr>
           <td style="color:var(--ink-3);font-size:.8rem">{{ loop.index }}</td>
-          <td><strong>{{ item.item_name }}</strong></td>
+          <td>
+            <strong>{{ item.item_name }}</strong>
+            {% if item.product %}
+            <div style="color:var(--ink-3);font-size:.76rem;margin-top:2px">
+              {{ item.product.sku }}{% if item.product.unit %} &middot; {{ item.product.unit }}{% endif %}
+            </div>
+            {% endif %}
+          </td>
           <td style="color:var(--ink-3);font-size:.82rem">{{ item.description or '—' }}</td>
           <td class="text-right mono-num">{{ item.quantity | float | round(3) | string | replace('.0','') if (item.quantity | float) % 1 == 0 else item.quantity }}</td>
           <td class="text-right mono-num">{{ item.rate_display }}</td>

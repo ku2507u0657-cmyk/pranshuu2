@@ -101,7 +101,7 @@
         <div class="input-wrap">
           <i class="bi bi-percent input-icon"></i>
           <input type="number" id="gst_rate" name="gst_rate" class="form-field"
-                 placeholder="18" min="0" max="100" step="0.01"
+                 placeholder="18" min="0" max="100" step="1"
                  value="{{ '%.2f'|format(product.gst_rate|float) if product.gst_rate is not none else '18.00' }}"
                  required />
         </div>
@@ -115,7 +115,7 @@
           <span class="input-prefix">Rs</span>
           <input type="number" id="purchase_price" name="purchase_price"
                  class="form-field has-prefix has-wide-prefix"
-                 placeholder="0.00" min="0" step="0.01"
+                 placeholder="0.00" min="0" step="1"
                  value="{{ '%.2f'|format(product.purchase_price|float) if product.purchase_price is not none else '0.00' }}"
                  required />
         </div>
@@ -126,7 +126,7 @@
           <span class="input-prefix">Rs</span>
           <input type="number" id="selling_price" name="selling_price"
                  class="form-field has-prefix has-wide-prefix"
-                 placeholder="0.00" min="0.01" step="0.01"
+                 placeholder="0.00" min="0" step="1"
                  value="{{ '%.2f'|format(product.selling_price|float) if product.selling_price is not none else '0.00' }}"
                  required />
         </div>
@@ -140,7 +140,7 @@
           <i class="bi bi-boxes input-icon"></i>
           <input type="number" id="current_stock" name="current_stock"
                  class="form-field"
-                 placeholder="0" min="0" step="0.001"
+                 placeholder="0" min="0" step="1"
                  value="{{ '%.3f'|format(product.current_stock|float) if product.current_stock is not none else '0.000' }}"
                  required />
         </div>
