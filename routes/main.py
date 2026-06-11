@@ -2,12 +2,15 @@
 routes/main.py — Dashboard with multi-user scoped stats (Cash Flow Edition).
 """
 import json
+import os
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, render_template, current_app, request, redirect, url_for
+from flask import Blueprint, render_template, current_app, request, redirect, url_for, send_from_directory, flash
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
 from models import BusinessProfile
 from extensions import db
+from utils.invoice_branding import INVOICE_TEMPLATES, DEFAULT_TERMS, logo_url
 
 main_bp = Blueprint("main", __name__)
 
@@ -226,25 +229,116 @@ def health():
             "app": current_app.config.get("APP_NAME")}
 
 
+ALLOWED_LOGO_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def _save_logo_upload(profile, file_storage, app):
+    """Validate and persist an uploaded company logo. Returns error message or None."""
+    if not file_storage or not file_storage.filename:
+        return None
+
+    filename = secure_filename(file_storage.filename)
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_LOGO_EXTENSIONS:
+        return "Logo must be PNG, JPG, GIF, or WebP."
+
+    file_storage.seek(0, os.SEEK_END)
+    size_mb = file_storage.tell() / (1024 * 1024)
+    file_storage.seek(0)
+    max_mb = app.config.get("MAX_LOGO_SIZE_MB", 2)
+    if size_mb > max_mb:
+        return f"Logo must be smaller than {max_mb} MB."
+
+    upload_root = app.config.get("UPLOAD_FOLDER", "uploads")
+    logos_dir = os.path.join(upload_root, "logos")
+    os.makedirs(logos_dir, exist_ok=True)
+
+    stored_name = f"owner_{profile.owner_id}.{ext}"
+    rel_path = os.path.join("logos", stored_name)
+    full_path = os.path.join(upload_root, rel_path)
+
+    if profile.logo_path and profile.logo_path != rel_path:
+        old_path = os.path.join(upload_root, profile.logo_path)
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+
+    file_storage.save(full_path)
+    profile.logo_path = rel_path
+    return None
+
+
+@main_bp.route("/uploads/<path:filename>")
+@login_required
+def serve_upload(filename):
+    """Serve uploaded files (e.g. company logos) for the current user."""
+    upload_root = current_app.config.get("UPLOAD_FOLDER", "uploads")
+    profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
+    if not profile or not profile.logo_path or profile.logo_path != filename:
+        return "Forbidden", 403
+
+    subdir = os.path.dirname(filename)
+    directory = os.path.join(upload_root, subdir) if subdir else upload_root
+    return send_from_directory(directory, os.path.basename(filename))
+
+
 @main_bp.route("/settings/profile", methods=["GET", "POST"])
 @login_required
 def settings_profile():
     profile = BusinessProfile.query.filter_by(owner_id=current_user.id).first()
+    app = current_app._get_current_object()
 
     if request.method == "POST":
         if not profile:
             profile = BusinessProfile(owner_id=current_user.id)
 
-        profile.business_name = request.form.get("business_name")
-        profile.owner_name = request.form.get("owner_name")
-        profile.upi_id = request.form.get("upi_id")
-        profile.gst_number = request.form.get("gst_number")
-        profile.phone = request.form.get("phone")
-        profile.email = request.form.get("email")
+        profile.business_name = request.form.get("business_name", "").strip()
+        profile.owner_name = request.form.get("owner_name", "").strip()
+        profile.upi_id = request.form.get("upi_id", "").strip() or None
+        profile.gst_number = request.form.get("gst_number", "").strip() or None
+        profile.phone = request.form.get("phone", "").strip() or None
+        profile.email = request.form.get("email", "").strip() or None
+        profile.address = request.form.get("address", "").strip() or None
+        profile.authorized_signatory = request.form.get("authorized_signatory", "").strip() or None
+        profile.terms_conditions = request.form.get("terms_conditions", "").strip() or None
+
+        template = request.form.get("invoice_template", "modern").strip()
+        profile.invoice_template = template if template in INVOICE_TEMPLATES else "modern"
+
+        logo_error = _save_logo_upload(profile, request.files.get("logo"), app)
+        if logo_error:
+            flash(logo_error, "danger")
+            return render_template(
+                "setup_business.html",
+                profile=profile,
+                logo_url=logo_url(profile, app),
+                templates=_template_choices(),
+                default_terms=DEFAULT_TERMS,
+                max_logo_mb=app.config.get("MAX_LOGO_SIZE_MB", 2),
+                app_name=app.config.get("APP_NAME", "InvoiceFlow"),
+            )
 
         db.session.add(profile)
         db.session.commit()
-
+        flash("Business profile saved.", "success")
         return redirect(url_for("main.dashboard"))
 
-    return render_template("setup_business.html", profile=profile)
+    return render_template(
+        "setup_business.html",
+        profile=profile,
+        logo_url=logo_url(profile, app) if profile else None,
+        templates=_template_choices(),
+        default_terms=DEFAULT_TERMS,
+        max_logo_mb=app.config.get("MAX_LOGO_SIZE_MB", 2),
+        app_name=app.config.get("APP_NAME", "InvoiceFlow"),
+    )
+
+
+def _template_choices():
+    return [
+        ("modern", "Modern", "Bold accent header, dark table, clean layout"),
+        ("classic", "Classic", "Traditional serif style with formal borders"),
+        ("minimal", "Minimal", "Light typography with maximum whitespace"),
+    ]

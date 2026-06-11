@@ -14,6 +14,11 @@ def create_app(config_class=None):
     app.config.from_object(config_class or get_config())
 
     os.makedirs(app.config.get("PDF_FOLDER", "invoices"), exist_ok=True)
+    os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
+    os.makedirs(
+        os.path.join(app.config.get("UPLOAD_FOLDER", "uploads"), "logos"),
+        exist_ok=True,
+    )
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -95,6 +100,12 @@ def _ensure_compatible_schema(app):
         },
         "bill_items": {
             "product_id": "INTEGER",
+        },
+        "business_profiles": {
+            "logo_path": "VARCHAR(300)",
+            "invoice_template": "VARCHAR(20) NOT NULL DEFAULT 'modern'",
+            "terms_conditions": "TEXT",
+            "authorized_signatory": "VARCHAR(200)",
         },
     }
 

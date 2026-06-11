@@ -35,6 +35,13 @@ class BaseConfig:
     # Where generated invoice PDFs are saved on disk.
     PDF_FOLDER = os.environ.get("PDF_FOLDER", os.path.join(os.path.dirname(__file__), "invoices"))
 
+    # ── Uploads (company logos, etc.) ──────────────────────────
+    UPLOAD_FOLDER = os.environ.get(
+        "UPLOAD_FOLDER",
+        os.path.join(os.path.dirname(__file__), "uploads"),
+    )
+    MAX_LOGO_SIZE_MB = int(os.environ.get("MAX_LOGO_SIZE_MB", 2))
+
     # ── UPI Payment ────────────────────────────────────────────
     UPI_ID          = os.environ.get("UPI_ID",          "")   # e.g. yourname@upi
     UPI_PAYEE_NAME  = os.environ.get("UPI_PAYEE_NAME",  os.environ.get("COMPANY_NAME", "InvoiceFlow"))

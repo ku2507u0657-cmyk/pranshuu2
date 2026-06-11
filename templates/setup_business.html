@@ -12,29 +12,54 @@
 
 <div style="max-width: 800px; margin: 24px auto;">
   <div class="form-card">
-    
+
     <div class="form-card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
       <div style="display: flex; gap: 16px; align-items: center;">
         <div class="form-card-icon blue"><i class="bi bi-building"></i></div>
         <div>
           <h2 class="form-card-title">Business Details</h2>
-          <p class="form-card-sub">Update your company info, GST, and contact details.</p>
+          <p class="form-card-sub">Company info, branding, invoice template, and PDF settings.</p>
         </div>
       </div>
-      
+
       <button form="profileForm" type="submit" class="btn-submit" style="padding: 8px 16px; font-size: 0.85rem;">
         <i class="bi bi-check2-circle"></i> Save Profile
       </button>
     </div>
 
-    <form method="POST" id="profileForm" class="client-form">
+    <form method="POST" id="profileForm" class="client-form" enctype="multipart/form-data">
+
+      <!-- Logo upload -->
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label class="form-label">Company Logo</label>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+          {% if logo_url %}
+          <img src="{{ logo_url }}" alt="Company logo"
+               style="max-width:140px;max-height:56px;object-fit:contain;
+                      border:1px solid var(--border);border-radius:8px;padding:8px;background:#fff" />
+          {% else %}
+          <div style="width:140px;height:56px;border:1px dashed var(--border);border-radius:8px;
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:.75rem;color:var(--ink-3)">
+            No logo
+          </div>
+          {% endif %}
+          <div style="flex:1;min-width:200px">
+            <input type="file" class="form-field" name="logo" accept="image/png,image/jpeg,image/gif,image/webp"
+                   style="padding:8px" />
+            <p style="margin:6px 0 0;font-size:.75rem;color:var(--ink-3)">
+              PNG, JPG, or WebP. Max {{ max_logo_mb }} MB. Shown on invoices and PDFs.
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div class="form-row two-col">
         <div class="form-group">
           <label class="form-label required">Business Name</label>
           <div class="input-wrap">
             <i class="bi bi-shop input-icon"></i>
-            <input type="text" class="form-field" name="business_name" 
+            <input type="text" class="form-field" name="business_name"
                    value="{{ profile.business_name if profile else '' }}" required>
           </div>
         </div>
@@ -42,9 +67,19 @@
           <label class="form-label required">Owner Name</label>
           <div class="input-wrap">
             <i class="bi bi-person input-icon"></i>
-            <input type="text" class="form-field" name="owner_name" 
+            <input type="text" class="form-field" name="owner_name"
                    value="{{ profile.owner_name if profile else '' }}" required>
           </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Business Address</label>
+        <div class="input-wrap">
+          <i class="bi bi-geo-alt input-icon" style="top:14px"></i>
+          <textarea class="form-field" name="address" rows="2"
+                    style="padding-left:36px;resize:vertical"
+                    placeholder="Street, City, State, PIN">{{ profile.address if profile else '' }}</textarea>
         </div>
       </div>
 
@@ -53,7 +88,7 @@
           <label class="form-label">UPI ID</label>
           <div class="input-wrap">
             <i class="bi bi-wallet2 input-icon"></i>
-            <input type="text" class="form-field" name="upi_id" 
+            <input type="text" class="form-field" name="upi_id"
                    value="{{ profile.upi_id if profile else '' }}" placeholder="e.g. name@bank">
           </div>
         </div>
@@ -61,7 +96,7 @@
           <label class="form-label">GST Number</label>
           <div class="input-wrap">
             <i class="bi bi-file-earmark-text input-icon"></i>
-            <input type="text" class="form-field" name="gst_number" 
+            <input type="text" class="form-field" name="gst_number"
                    value="{{ profile.gst_number if profile else '' }}" placeholder="29ABCDE1234F1Z5">
           </div>
         </div>
@@ -72,7 +107,7 @@
           <label class="form-label">Phone Number</label>
           <div class="input-wrap">
             <i class="bi bi-telephone input-icon"></i>
-            <input type="text" class="form-field" name="phone" 
+            <input type="text" class="form-field" name="phone"
                    value="{{ profile.phone if profile else '' }}">
           </div>
         </div>
@@ -80,10 +115,43 @@
           <label class="form-label">Email Address</label>
           <div class="input-wrap">
             <i class="bi bi-envelope input-icon"></i>
-            <input type="email" class="form-field" name="email" 
+            <input type="email" class="form-field" name="email"
                    value="{{ profile.email if profile else '' }}">
           </div>
         </div>
+      </div>
+
+      <!-- Invoice template -->
+      <div class="form-group">
+        <label class="form-label">Invoice Template</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          {% for tpl_id, tpl_label, tpl_desc in templates %}
+          <label style="cursor:pointer;border:2px solid {% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}var(--accent){% else %}var(--border){% endif %};
+                        border-radius:8px;padding:12px;background:{% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}var(--accent-2){% else %}#fff{% endif %}">
+            <input type="radio" name="invoice_template" value="{{ tpl_id }}"
+                   {% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}checked{% endif %}
+                   style="margin-right:6px" />
+            <strong style="font-size:.85rem">{{ tpl_label }}</strong>
+            <p style="margin:4px 0 0;font-size:.72rem;color:var(--ink-3)">{{ tpl_desc }}</p>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Authorized Signatory</label>
+        <div class="input-wrap">
+          <i class="bi bi-pen input-icon"></i>
+          <input type="text" class="form-field" name="authorized_signatory"
+                 value="{{ profile.authorized_signatory if profile and profile.authorized_signatory else '' }}"
+                 placeholder="Name shown on signature line">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Terms &amp; Conditions</label>
+        <textarea class="form-field" name="terms_conditions" rows="4"
+                  placeholder="Payment terms, late fees, jurisdiction, etc.">{{ profile.terms_conditions if profile and profile.terms_conditions else default_terms }}</textarea>
       </div>
 
     </form>

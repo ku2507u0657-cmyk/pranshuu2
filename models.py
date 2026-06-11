@@ -526,6 +526,10 @@ class BusinessProfile(db.Model):
     address = db.Column(db.Text, nullable=True)
     phone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(120), nullable=True)
+    logo_path = db.Column(db.String(300), nullable=True)
+    invoice_template = db.Column(db.String(20), nullable=False, default="modern")
+    terms_conditions = db.Column(db.Text, nullable=True)
+    authorized_signatory = db.Column(db.String(200), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

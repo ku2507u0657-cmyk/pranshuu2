@@ -1,0 +1,122 @@
+/* ── Invoice Print Stylesheet ───────────────────────────────────────────── */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 15mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide app chrome */
+  .sidebar,
+  .topbar,
+  .flash-container,
+  .breadcrumb-nav,
+  .page-header,
+  .invoice-sidebar,
+  .no-print,
+  .env-badge,
+  .sidebar-toggle {
+    display: none !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .page-body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Print layout */
+  .invoice-print-area {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .invoice-doc {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    width: 100% !important;
+    max-width: 210mm;
+    margin: 0 auto;
+  }
+
+  .invoice-doc-header {
+    padding: 0 0 12px !important;
+  }
+
+  .invoice-doc-party {
+    padding: 12px 0 !important;
+  }
+
+  .invoice-doc-party + .invoice-doc-party {
+    border-left: none !important;
+    padding-left: 16px !important;
+  }
+
+  .invoice-doc-totals {
+    padding: 12px 0 16px !important;
+  }
+
+  .invoice-doc-footer-section {
+    padding: 16px 0 0 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Prevent page breaks inside tables */
+  .invoice-doc-table-wrap,
+  .invoice-doc-table,
+  .invoice-doc-table thead,
+  .invoice-doc-table tbody,
+  .invoice-doc-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .invoice-doc-totals-block,
+  .invoice-doc-qr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .invoice-doc-signature {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Preserve template colours in print */
+  .invoice-template-modern .invoice-doc-table th {
+    background: #1A1714 !important;
+    color: #fff !important;
+  }
+
+  .invoice-template-modern .invoice-doc-total-row.grand {
+    background: #1A1714 !important;
+    color: #fff !important;
+  }
+
+  .invoice-template-classic .invoice-doc-table th {
+    background: #F7F6F2 !important;
+  }
+
+  a[href]:after {
+    content: none !important;
+  }
+}

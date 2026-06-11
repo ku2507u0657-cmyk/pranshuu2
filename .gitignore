@@ -16,6 +16,9 @@ venv/
 # Generated PDFs
 invoices/*.pdf
 
+# Uploaded assets (company logos)
+uploads/
+
 # Logs
 *.log
 
