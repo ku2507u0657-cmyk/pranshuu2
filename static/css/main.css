@@ -895,6 +895,102 @@ a:hover { color: var(--accent-hover); }
 
 .row-btn.edit:hover  { background: var(--accent-2); border-color: #93C5FD; color: var(--accent); }
 .row-btn.delete:hover { background: var(--red-bg);   border-color: #FECACA; color: var(--red); }
+.row-btn.whatsapp:hover { background: #DCFCE7; border-color: #86EFAC; color: #128C7E; }
+
+/* ── WhatsApp share ─────────────────────────────────────── */
+.btn-whatsapp-share {
+  background: #25D366 !important;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-whatsapp-share:hover {
+  background: #1DA851 !important;
+  color: #fff;
+}
+
+.btn-whatsapp-share.whatsapp-share-loading,
+.row-btn.whatsapp.whatsapp-share-loading {
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+@keyframes whatsapp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spin {
+  display: inline-block;
+  animation: whatsapp-spin 0.8s linear infinite;
+}
+
+.whatsapp-toast-container {
+  position: fixed;
+  top: calc(var(--topbar-h) + 12px);
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.whatsapp-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: .84rem;
+  color: var(--ink);
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.whatsapp-toast.dismissed {
+  opacity: 0;
+  transform: translateX(12px);
+}
+
+.whatsapp-toast i.bi:first-child {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 1rem;
+}
+
+.whatsapp-toast-success { border-left: 3px solid var(--green); }
+.whatsapp-toast-success i.bi:first-child { color: var(--green); }
+
+.whatsapp-toast-warning { border-left: 3px solid var(--amber); }
+.whatsapp-toast-warning i.bi:first-child { color: var(--amber); }
+
+.whatsapp-toast-danger  { border-left: 3px solid var(--red); }
+.whatsapp-toast-danger  i.bi:first-child { color: var(--red); }
+
+.whatsapp-toast-info    { border-left: 3px solid var(--accent); }
+.whatsapp-toast-info    i.bi:first-child { color: var(--accent); }
+
+.whatsapp-toast-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+}
+
+.whatsapp-toast-close:hover {
+  color: var(--ink);
+}
 
 /* ── Pagination ─────────────────────────────────────────── */
 .pagination-row {

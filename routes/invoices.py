@@ -427,6 +427,39 @@ def gst_preview():
     return jsonify({"gst": f"{float(gst):,.2f}", "total": f"{float(total):,.2f}"})
 
 
+@invoices_bp.route("/<int:invoice_id>/whatsapp-share")
+@login_required
+def whatsapp_share(invoice_id):
+    """Prepare invoice data for WhatsApp sharing (JSON API)."""
+    invoice = _owned_invoice(invoice_id)
+    app = current_app._get_current_object()
+
+    try:
+        from utils.whatsapp import prepare_invoice_whatsapp_share, WhatsAppShareError
+
+        payload = prepare_invoice_whatsapp_share(invoice, app)
+        db.session.commit()
+        payload["pdf_url"] = url_for(
+            "invoices.download_pdf",
+            invoice_id=invoice.id,
+            _external=False,
+        )
+        return jsonify(payload)
+    except WhatsAppShareError as exc:
+        return jsonify({
+            "success": False,
+            "error": str(exc),
+            "error_code": "pdf_failed",
+        }), 500
+    except Exception as exc:
+        logger.exception("WhatsApp share failed for invoice %s: %s", invoice_id, exc)
+        return jsonify({
+            "success": False,
+            "error": "Something went wrong while preparing the invoice for sharing.",
+            "error_code": "unknown",
+        }), 500
+
+
 @invoices_bp.route("/<int:invoice_id>/resend-email", methods=["POST"])
 @login_required
 def resend_email(invoice_id):

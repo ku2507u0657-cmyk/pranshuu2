@@ -30,6 +30,13 @@
        class="btn-action-primary" style="background:var(--accent)">
       <i class="bi bi-download"></i> Download PDF
     </a>
+    <button type="button"
+            class="btn-action-primary btn-whatsapp-share"
+            data-whatsapp-share
+            data-invoice-id="{{ invoice.id }}"
+            title="Share on WhatsApp">
+      <i class="bi bi-whatsapp"></i> Share on WhatsApp
+    </button>
     {% if invoice.status != 'paid' %}
     <form method="POST"
           action="{{ url_for('invoices.mark_paid', invoice_id=invoice.id, next=url_for('invoices.view_invoice', invoice_id=invoice.id)) }}"
@@ -84,6 +91,14 @@
           <span>Download PDF</span>
           <i class="bi bi-arrow-down ms-auto"></i>
         </a>
+        <button type="button"
+                class="qa-btn active btn-whatsapp-share"
+                data-whatsapp-share
+                data-invoice-id="{{ invoice.id }}">
+          <i class="bi bi-whatsapp"></i>
+          <span>Share on WhatsApp</span>
+          <i class="bi bi-arrow-up-right ms-auto"></i>
+        </button>
         <a href="{{ url_for('clients.view_client', client_id=invoice.client_id) }}"
            class="qa-btn active">
           <i class="bi bi-person-lines-fill"></i>
@@ -135,4 +150,8 @@
 
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/whatsapp-share.js') }}"></script>
 {% endblock %}
