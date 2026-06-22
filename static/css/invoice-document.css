@@ -75,6 +75,7 @@
 .invoice-doc-status.paid    { background: #DCFCE7; color: #16A34A; }
 .invoice-doc-status.unpaid  { background: #FEF3C7; color: #D97706; }
 .invoice-doc-status.overdue { background: #FEE2E2; color: #DC2626; }
+.invoice-doc-status.draft   { background: #F7F6F2; color: #8A8480; }
 
 .invoice-doc-parties {
   display: grid;
@@ -149,6 +150,17 @@
 
 .invoice-doc-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 
+.invoice-doc-table-items th,
+.invoice-doc-table-items td {
+  font-size: 0.78rem;
+}
+
+.invoice-doc-line-meta {
+  font-size: 0.74rem;
+  color: var(--ink-3, #8A8480);
+  margin-top: 2px;
+}
+
 .invoice-doc-totals {
   padding: 16px 32px 24px;
   display: flex;
@@ -207,6 +219,10 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-2, #4A4540);
+}
+
+.invoice-doc-section-spaced {
+  margin-top: 16px;
 }
 
 .invoice-doc-terms-text {
@@ -295,7 +311,8 @@
 }
 
 /* ── Template: Minimal ────────────────────────────────────────────────────── */
-.invoice-template-minimal .invoice-doc {
+.invoice-template-minimal .invoice-doc,
+.invoice-doc.invoice-template-minimal {
   border: none;
   border-radius: 0;
 }

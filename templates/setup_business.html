@@ -18,7 +18,7 @@
         <div class="form-card-icon blue"><i class="bi bi-building"></i></div>
         <div>
           <h2 class="form-card-title">Business Details</h2>
-          <p class="form-card-sub">Company info, branding, invoice template, and PDF settings.</p>
+          <p class="form-card-sub">Company info, branding, document template, and PDF settings.</p>
         </div>
       </div>
 
@@ -48,7 +48,7 @@
             <input type="file" class="form-field" name="logo" accept="image/png,image/jpeg,image/gif,image/webp"
                    style="padding:8px" />
             <p style="margin:6px 0 0;font-size:.75rem;color:var(--ink-3)">
-              PNG, JPG, or WebP. Max {{ max_logo_mb }} MB. Shown on invoices and PDFs.
+              PNG, JPG, or WebP. Max {{ max_logo_mb }} MB. Shown on invoices, bills, and PDFs.
             </p>
           </div>
         </div>
@@ -121,9 +121,9 @@
         </div>
       </div>
 
-      <!-- Invoice template -->
+      <!-- Document template -->
       <div class="form-group">
-        <label class="form-label">Invoice Template</label>
+        <label class="form-label">Document Template</label>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
           {% for tpl_id, tpl_label, tpl_desc in templates %}
           <label style="cursor:pointer;border:2px solid {% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}var(--accent){% else %}var(--border){% endif %};

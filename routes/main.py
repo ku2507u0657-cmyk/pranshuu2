@@ -339,6 +339,6 @@ def settings_profile():
 def _template_choices():
     return [
         ("modern", "Modern", "Bold accent header, dark table, clean layout"),
-        ("classic", "Classic", "Traditional serif style with formal borders"),
+        ("classic", "Classic", "Traditional style with formal borders"),
         ("minimal", "Minimal", "Light typography with maximum whitespace"),
     ]

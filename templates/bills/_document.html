@@ -1,0 +1,147 @@
+{# Professional printable bill document - used in view and print #}
+<div class="invoice-doc invoice-template-{{ template }}">
+  <header class="invoice-doc-header">
+    <div class="invoice-doc-company">
+      {% if logo_url %}
+      <img src="{{ logo_url }}" alt="{{ company_name }}" class="invoice-doc-logo" />
+      {% endif %}
+      <div>
+        <p class="invoice-doc-company-name">{{ company_name }}</p>
+        <p class="invoice-doc-company-meta">
+          {% if company_address %}{{ company_address }}<br>{% endif %}
+          {% if company_phone %}{{ company_phone }}{% endif %}
+          {% if company_phone and company_email %} &nbsp;|&nbsp; {% endif %}
+          {% if company_email %}{{ company_email }}{% endif %}
+          {% if company_gstin %}<br>GSTIN: {{ company_gstin }}{% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="invoice-doc-title-block">
+      <h2 class="invoice-doc-title">BILL</h2>
+      <span class="invoice-doc-status {{ bill.effective_status }}">
+        {{ bill.effective_status }}
+      </span>
+    </div>
+  </header>
+
+  <div class="invoice-doc-parties">
+    <div class="invoice-doc-party">
+      <p class="invoice-doc-label">Bill To</p>
+      <p class="invoice-doc-party-name">{{ bill.client.name }}</p>
+      {% if bill.client.business_name %}
+      <p class="invoice-doc-party-detail">{{ bill.client.business_name }}</p>
+      {% endif %}
+      {% if bill.client.email %}
+      <p class="invoice-doc-party-detail">{{ bill.client.email }}</p>
+      {% endif %}
+      {% if bill.client.phone %}
+      <p class="invoice-doc-party-detail">{{ bill.client.phone }}</p>
+      {% endif %}
+      {% if bill.client.full_address %}
+      <p class="invoice-doc-party-detail">{{ bill.client.full_address }}</p>
+      {% endif %}
+      {% if bill.client.gst_number %}
+      <p class="invoice-doc-party-detail">GSTIN: {{ bill.client.gst_number }}</p>
+      {% endif %}
+    </div>
+    <div class="invoice-doc-party">
+      <p class="invoice-doc-label">Bill Details</p>
+      <div class="invoice-doc-meta-row">
+        <span>Bill No.</span>
+        <span>{{ bill.bill_number }}</span>
+      </div>
+      <div class="invoice-doc-meta-row">
+        <span>Issue Date</span>
+        <span>{{ bill.created_at.strftime('%d %B %Y') }}</span>
+      </div>
+      <div class="invoice-doc-meta-row">
+        <span>Due Date</span>
+        <span>{{ bill.due_date.strftime('%d %B %Y') if bill.due_date else 'Not set' }}</span>
+      </div>
+      {% if bill.paid_at %}
+      <div class="invoice-doc-meta-row">
+        <span>Paid On</span>
+        <span>{{ bill.paid_at.strftime('%d %B %Y') }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="invoice-doc-table-wrap">
+    <table class="invoice-doc-table invoice-doc-table-items">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item</th>
+          <th>Description</th>
+          <th class="num">Qty</th>
+          <th class="num">Rate</th>
+          <th class="num">GST</th>
+          <th class="num">GST Amt</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in bill.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <strong>{{ item.item_name }}</strong>
+            {% if item.product %}
+            <div class="invoice-doc-line-meta">
+              SKU {{ item.product.sku }}{% if item.product.unit %} - {{ item.product.unit }}{% endif %}
+            </div>
+            {% endif %}
+          </td>
+          <td>{{ item.description or '-' }}</td>
+          <td class="num">{{ item.quantity|float|round(3)|string|replace('.0','') }}</td>
+          <td class="num">{{ item.rate_display }}</td>
+          <td class="num">{{ item.gst_rate_display }}</td>
+          <td class="num">&#8377;{{ "%.2f"|format(item.gst_amount|float) }}</td>
+          <td class="num">{{ item.total_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="invoice-doc-totals">
+    <div class="invoice-doc-totals-block">
+      <div class="invoice-doc-total-row">
+        <span>Subtotal (excl. GST)</span>
+        <span>{{ bill.subtotal_display }}</span>
+      </div>
+      <div class="invoice-doc-total-row">
+        <span>Total GST</span>
+        <span>{{ bill.total_gst_display }}</span>
+      </div>
+      <div class="invoice-doc-total-row grand">
+        <span>Grand Total</span>
+        <span>{{ bill.grand_total_display }}</span>
+      </div>
+    </div>
+    {% if qr_b64 and upi_id %}
+    <div class="invoice-doc-qr">
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="UPI QR Code" />
+      <p class="invoice-doc-qr-label">Scan to Pay - {{ upi_id }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <footer class="invoice-doc-footer-section">
+    {% if bill.notes %}
+    <p class="invoice-doc-section-title">Notes</p>
+    <p class="invoice-doc-terms-text">{{ bill.notes }}</p>
+    {% endif %}
+
+    <p class="invoice-doc-section-title{% if bill.notes %} invoice-doc-section-spaced{% endif %}">Terms &amp; Conditions</p>
+    <p class="invoice-doc-terms-text">{{ terms_conditions }}</p>
+
+    <div class="invoice-doc-signature">
+      <div class="invoice-doc-sig-line"></div>
+      <p class="invoice-doc-sig-label">Authorized Signature</p>
+      <p class="invoice-doc-sig-name">{{ authorized_signatory or company_name }}</p>
+      <p class="invoice-doc-party-detail">{{ company_name }}</p>
+    </div>
+  </footer>
+</div>

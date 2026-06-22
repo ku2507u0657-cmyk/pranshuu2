@@ -344,22 +344,23 @@ def create_bill(client_id=None):
 @login_required
 def view_bill(bill_id):
     bill = _owned_bill(bill_id)
+    app = current_app._get_current_object()
 
-    # --- NEW: Fetch dynamic business profile for the Web View ---
-    from models import BusinessProfile
-    profile = BusinessProfile.query.filter_by(owner_id=bill.owner_id).first()
-    
-    company_name = profile.business_name if profile and profile.business_name else current_app.config.get("COMPANY_NAME", "InvoiceFlow")
-    upi_id       = profile.upi_id if profile and profile.upi_id else current_app.config.get("UPI_ID", "")
+    from utils.invoice_branding import resolve_business_branding
+    brand = resolve_business_branding(bill.owner_id, app)
 
     qr_b64 = ""
     try:
         import base64
         from utils.qr import build_upi_qr_bytes
-        upi_payee = company_name
-        if upi_id:
-            qr_bytes = build_upi_qr_bytes(upi_id, upi_payee,
-                                           float(bill.grand_total), bill.bill_number)
+
+        if brand["upi_id"]:
+            qr_bytes = build_upi_qr_bytes(
+                upi_id=brand["upi_id"],
+                payee_name=brand["company_name"],
+                amount=float(bill.grand_total),
+                note=bill.bill_number,
+            )
             if qr_bytes:
                 qr_b64 = base64.b64encode(qr_bytes).decode()
     except Exception:
@@ -367,9 +368,17 @@ def view_bill(bill_id):
 
     return render_template("bills/view.html",
         bill=bill, qr_b64=qr_b64,
-        upi_id       = upi_id,
-        company_name = company_name,
-        app_name     = current_app.config.get("APP_NAME", "InvoiceFlow"),
+        upi_id=brand["upi_id"],
+        app_name=app.config.get("APP_NAME", "InvoiceFlow"),
+        company_name=brand["company_name"],
+        company_address=brand["company_address"],
+        company_phone=brand["company_phone"],
+        company_email=brand["company_email"],
+        company_gstin=brand["company_gstin"],
+        logo_url=brand["logo_url"],
+        template=brand["template"],
+        terms_conditions=brand["terms_conditions"],
+        authorized_signatory=brand["authorized_signatory"],
     )
 
 
@@ -409,15 +418,14 @@ def download_pdf(bill_id):
     bill = _owned_bill(bill_id)
     app  = current_app._get_current_object()
 
-    if not bill.pdf_path or not os.path.exists(bill.pdf_path):
-        try:
-            from utils.bill_pdf import build_and_save_bill_pdf
-            _, rel_path = build_and_save_bill_pdf(bill, app)
-            bill.pdf_path = rel_path
-            db.session.commit()
-        except Exception as exc:
-            flash(f"Could not generate PDF: {exc}", "danger")
-            return redirect(url_for("bills.view_bill", bill_id=bill_id))
+    try:
+        from utils.bill_pdf import build_and_save_bill_pdf
+        _, rel_path = build_and_save_bill_pdf(bill, app)
+        bill.pdf_path = rel_path
+        db.session.commit()
+    except Exception as exc:
+        flash(f"Could not generate PDF: {exc}", "danger")
+        return redirect(url_for("bills.view_bill", bill_id=bill_id))
 
     return send_file(bill.pdf_path, mimetype="application/pdf",
                      as_attachment=True,
