@@ -31,6 +31,15 @@
        class="btn-action-primary" style="background:var(--accent)">
       <i class="bi bi-download"></i> Download PDF
     </a>
+    <button type="button"
+            class="btn-action-primary btn-whatsapp-share"
+            data-whatsapp-share
+            data-document-type="bill"
+            data-document-id="{{ bill.id }}"
+            title="Share on WhatsApp"
+            style="background:#25D366">
+      <i class="bi bi-whatsapp"></i> Share on WhatsApp
+    </button>
     {% if bill.status != 'paid' %}
     <form method="POST"
           action="{{ url_for('bills.mark_paid', bill_id=bill.id, next=url_for('bills.view_bill', bill_id=bill.id)) }}"
@@ -97,6 +106,16 @@
           <span>Download PDF</span>
           <i class="bi bi-arrow-down ms-auto"></i>
         </a>
+        <button type="button"
+                class="qa-btn active btn-whatsapp-share"
+                data-whatsapp-share
+                data-document-type="bill"
+                data-document-id="{{ bill.id }}"
+                style="background:#25D366;color:#fff;border-color:#25D366">
+          <i class="bi bi-whatsapp"></i>
+          <span>Share on WhatsApp</span>
+          <i class="bi bi-arrow-up-right ms-auto"></i>
+        </button>
         <a href="{{ url_for('bills.create_bill', client_id=bill.client_id) }}" class="qa-btn active">
           <i class="bi bi-plus-lg"></i>
           <span>New Bill for Customer</span>
@@ -145,4 +164,8 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/whatsapp-share.js') }}"></script>
 {% endblock %}

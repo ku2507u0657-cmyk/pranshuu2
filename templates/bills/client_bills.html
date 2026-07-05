@@ -91,6 +91,14 @@
             <a href="{{ url_for('bills.download_pdf', bill_id=bill.id) }}" class="row-btn" title="PDF">
               <i class="bi bi-download"></i>
             </a>
+            <button type="button"
+                    class="row-btn whatsapp"
+                    data-whatsapp-share
+                    data-document-type="bill"
+                    data-document-id="{{ bill.id }}"
+                    title="Share on WhatsApp">
+              <i class="bi bi-whatsapp"></i>
+            </button>
             {% if bill.status != 'paid' %}
             <form method="POST" action="{{ url_for('bills.mark_paid', bill_id=bill.id) }}"
                   style="display:inline"
@@ -120,4 +128,8 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/whatsapp-share.js') }}"></script>
 {% endblock %}

@@ -347,7 +347,7 @@
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Recent Bills</h2>
-          <p class="panel-subtitle">Latest 5 logged expenses</p>
+          <p class="panel-subtitle">Latest 5 logged bills</p>
         </div>
         <a href="{{ url_for('bills.list_bills') }}" class="panel-action">View all &rarr;</a>
       </div>
@@ -355,8 +355,10 @@
       {% if recent_bills %}
       <div class="activity-list">
         {% for bill in recent_bills %}
+        {% set bill_is_money_in = bill.transaction_type == 'in' %}
         <div class="activity-row">
-          <div class="activity-icon-wrap {{ 'paid' if bill.status == 'paid' else 'overdue' if bill.is_overdue else 'unpaid' }}" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; border: none;">
+          <div class="activity-icon-wrap {{ 'paid' if bill.status == 'paid' else 'overdue' if bill.is_overdue else 'unpaid' }}"
+               style="background: {{ 'rgba(22, 163, 74, 0.1)' if bill_is_money_in else 'rgba(220, 38, 38, 0.1)' }}; color: {{ '#16a34a' if bill_is_money_in else '#dc2626' }}; border: none;">
             <i class="bi bi-{{ 'check-lg' if bill.status == 'paid' else 'exclamation-lg' if bill.is_overdue else 'receipt' }}"></i>
           </div>
           <div class="activity-info">
@@ -366,7 +368,9 @@
             </div>
             <div class="activity-date">{{ bill.created_at.strftime('%d %b %Y') }}</div>
           </div>
-          <div class="activity-amount" style="color: var(--red);">-{{ bill.grand_total_display }}</div>
+          <div class="activity-amount" style="color: {{ 'var(--green)' if bill_is_money_in else 'var(--red)' }};">
+            {{ '' if bill_is_money_in else '-' }}{{ bill.grand_total_display }}
+          </div>
         </div>
         {% endfor %}
       </div>

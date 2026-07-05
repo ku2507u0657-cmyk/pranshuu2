@@ -52,6 +52,24 @@ def build_invoice_share_message(invoice, business_name):
     )
 
 
+def build_bill_share_message(bill, business_name):
+    """Return the professional WhatsApp message body for a bill."""
+    customer_name = bill.client.name if bill.client else "Customer"
+    bill_date = bill.created_at.strftime("%d %b %Y")
+    amount = f"\u20b9{float(bill.grand_total):,.2f}"
+
+    return (
+        f"Hello {customer_name},\n\n"
+        f"Thank you for your business.\n\n"
+        f"Bill Number: {bill.bill_number}\n"
+        f"Bill Date: {bill_date}\n"
+        f"Amount: {amount}\n\n"
+        f"Please find your bill attached.\n\n"
+        f"Regards,\n"
+        f"{business_name}"
+    )
+
+
 def build_whatsapp_urls(phone, message):
     """
     Build mobile (wa.me) and desktop (WhatsApp Web) share URLs.
@@ -106,6 +124,8 @@ def prepare_invoice_whatsapp_share(invoice, app):
 
     payload = {
         "success": True,
+        "document_label": "Invoice",
+        "document_number": invoice.invoice_number,
         "has_phone": has_phone,
         "phone": phone,
         "customer_name": invoice.client.name if invoice.client else "",
@@ -127,5 +147,64 @@ def prepare_invoice_whatsapp_share(invoice, app):
     return payload
 
 
+def prepare_bill_whatsapp_share(bill, app):
+    """
+    Prepare all data needed to share a bill on WhatsApp.
+
+    Returns a dict suitable for JSON serialization. Raises WhatsAppShareError
+    when PDF generation fails.
+    """
+    from utils.bill_pdf import build_and_save_bill_pdf
+    from utils.invoice_branding import resolve_business_branding
+
+    brand = resolve_business_branding(bill.owner_id, app)
+    business_name = brand["company_name"]
+    message = build_bill_share_message(bill, business_name)
+
+    raw_phone = bill.client.phone if bill.client else ""
+    phone = format_whatsapp_phone(raw_phone)
+    has_phone = bool(phone)
+
+    try:
+        _, rel_path = build_and_save_bill_pdf(bill, app)
+        bill.pdf_path = rel_path
+        pdf_ready = True
+    except Exception as exc:
+        logger.error(
+            "PDF generation failed for WhatsApp share %s: %s",
+            bill.bill_number,
+            exc,
+        )
+        raise WhatsAppShareError(
+            "Could not generate bill PDF. Please try again or download the PDF first."
+        ) from exc
+
+    urls = build_whatsapp_urls(phone, message)
+
+    payload = {
+        "success": True,
+        "document_label": "Bill",
+        "document_number": bill.bill_number,
+        "has_phone": has_phone,
+        "phone": phone,
+        "customer_name": bill.client.name if bill.client else "",
+        "message": message,
+        "business_name": business_name,
+        "bill_number": bill.bill_number,
+        "pdf_ready": pdf_ready,
+        "pdf_filename": f"{bill.bill_number}.pdf",
+        "whatsapp_url_mobile": urls["mobile"],
+        "whatsapp_url_desktop": urls["desktop"],
+    }
+
+    if not has_phone:
+        payload["warning"] = (
+            "Customer phone number is not available. "
+            "WhatsApp will open so you can choose a contact manually."
+        )
+
+    return payload
+
+
 class WhatsAppShareError(Exception):
-    """Raised when invoice WhatsApp sharing cannot be prepared."""
+    """Raised when WhatsApp sharing cannot be prepared."""

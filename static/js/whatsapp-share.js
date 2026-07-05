@@ -96,15 +96,18 @@
     }
   }
 
-  function fetchSharePayload(invoiceId) {
-    return fetch("/invoices/" + invoiceId + "/whatsapp-share", {
+  function fetchSharePayload(documentType, documentId) {
+    var label = documentType === "bill" ? "bill" : "invoice";
+    var basePath = documentType === "bill" ? "/bills/" : "/invoices/";
+
+    return fetch(basePath + documentId + "/whatsapp-share", {
       method: "GET",
       headers: { Accept: "application/json" },
       credentials: "same-origin",
     }).then(function (response) {
       return response.json().then(function (data) {
         if (!response.ok || !data.success) {
-          var err = new Error(data.error || "Could not prepare invoice for sharing.");
+          var err = new Error(data.error || "Could not prepare " + label + " for sharing.");
           err.code = data.error_code || "unknown";
           throw err;
         }
@@ -116,7 +119,7 @@
   function fetchPdfBlob(pdfUrl) {
     return fetch(pdfUrl, { credentials: "same-origin" }).then(function (response) {
       if (!response.ok) {
-        throw new Error("Could not download the invoice PDF.");
+        throw new Error("Could not download the PDF.");
       }
       return response.blob();
     });
@@ -168,12 +171,13 @@
       });
   }
 
-  function shareInvoice(invoiceId, triggerBtn) {
+  function shareDocument(documentType, documentId, triggerBtn) {
     setButtonLoading(triggerBtn, true);
 
     var payload;
+    var label = documentType === "bill" ? "Bill" : "Invoice";
 
-    fetchSharePayload(invoiceId)
+    fetchSharePayload(documentType, documentId)
       .then(function (data) {
         payload = data;
 
@@ -184,12 +188,12 @@
         return fetchPdfBlob(data.pdf_url);
       })
       .then(function (blob) {
-        var filename = payload.pdf_filename || "invoice.pdf";
+        var filename = payload.pdf_filename || label.toLowerCase() + ".pdf";
 
         return tryNativeShare(blob, filename, payload).then(function (sharedNatively) {
           if (sharedNatively) {
             showToast(
-              "Invoice shared successfully via " + payload.invoice_number + ".",
+              label + " shared successfully via " + (payload.document_number || "") + ".",
               "success"
             );
             return;
@@ -216,7 +220,7 @@
         });
       })
       .catch(function (err) {
-        var message = err.message || "Failed to share invoice on WhatsApp.";
+        var message = err.message || "Failed to share " + label.toLowerCase() + " on WhatsApp.";
         if (err.code === "pdf_failed") {
           showToast(message, "danger");
         } else {
@@ -228,13 +232,25 @@
       });
   }
 
+  function shareInvoice(invoiceId, triggerBtn) {
+    shareDocument("invoice", invoiceId, triggerBtn);
+  }
+
+  function shareBill(billId, triggerBtn) {
+    shareDocument("bill", billId, triggerBtn);
+  }
+
   function initWhatsAppShareButtons() {
     document.querySelectorAll("[data-whatsapp-share]").forEach(function (btn) {
       btn.addEventListener("click", function (event) {
         event.preventDefault();
-        var invoiceId = btn.getAttribute("data-invoice-id");
-        if (!invoiceId) return;
-        shareInvoice(invoiceId, btn);
+        var documentType = btn.getAttribute("data-document-type") || "invoice";
+        var documentId =
+          btn.getAttribute("data-document-id") ||
+          btn.getAttribute("data-bill-id") ||
+          btn.getAttribute("data-invoice-id");
+        if (!documentId) return;
+        shareDocument(documentType, documentId, btn);
       });
     });
   }
@@ -243,6 +259,8 @@
 
   window.InvoiceFlowWhatsApp = {
     shareInvoice: shareInvoice,
+    shareBill: shareBill,
+    shareDocument: shareDocument,
     showToast: showToast,
   };
 })();

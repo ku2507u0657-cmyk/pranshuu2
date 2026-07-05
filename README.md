@@ -131,6 +131,12 @@ invoiceflow/
 For production, keep `FORCE_HTTPS=True`. If you run more than one worker or
 instance, set `RATELIMIT_STORAGE_URI` to Redis so brute-force limits are shared.
 
+If a manually created Render Web Service fails with
+`A strong SECRET_KEY must be set when FLASK_ENV=production`, open the service's
+**Environment** tab and add `SECRET_KEY` manually. The `generateValue: true`
+entry in `render.yaml` is applied when the service is created from a Render
+Blueprint; existing/manual services do not automatically receive it.
+
 ---
 
 ## Gmail Setup (Email Sending)

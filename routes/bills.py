@@ -437,6 +437,40 @@ def download_pdf(bill_id):
                      download_name=f"{bill.bill_number}.pdf")
 
 
+@bills_bp.route("/<int:bill_id>/whatsapp-share")
+@login_required
+def whatsapp_share(bill_id):
+    """Prepare bill data for WhatsApp sharing (JSON API)."""
+    bill = _owned_bill(bill_id)
+    app = current_app._get_current_object()
+
+    try:
+        from utils.whatsapp import prepare_bill_whatsapp_share, WhatsAppShareError
+
+        payload = prepare_bill_whatsapp_share(bill, app)
+        db.session.commit()
+        payload["pdf_url"] = url_for(
+            "bills.download_pdf",
+            bill_id=bill.id,
+            _external=False,
+        )
+        return jsonify(payload)
+    except WhatsAppShareError as exc:
+        logger.warning("WhatsApp share failed for bill %s: %s", bill_id, exc)
+        return jsonify({
+            "success": False,
+            "error": "Could not prepare the bill PDF for sharing.",
+            "error_code": "pdf_failed",
+        }), 500
+    except Exception as exc:
+        logger.exception("WhatsApp share failed for bill %s: %s", bill_id, exc)
+        return jsonify({
+            "success": False,
+            "error": "Something went wrong while preparing the bill for sharing.",
+            "error_code": "unknown",
+        }), 500
+
+
 @bills_bp.route("/<int:bill_id>/resend-email", methods=["POST"])
 @login_required
 def resend_email(bill_id):
