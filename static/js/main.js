@@ -8,12 +8,23 @@
 // ── Sidebar toggle (mobile) ───────────────────────────────
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
   if (sidebar) {
     sidebar.classList.toggle("open");
+    const isOpen = sidebar.classList.contains("open");
+
+    // Toggle overlay
+    if (overlay) {
+      if (isOpen) {
+        overlay.classList.add("active");
+      } else {
+        overlay.classList.remove("active");
+      }
+    }
 
     // Toggle body scroll lock when sidebar is open on mobile
     if (window.innerWidth < 992) {
-      document.body.style.overflow = sidebar.classList.contains("open") ? "hidden" : "";
+      document.body.style.overflow = isOpen ? "hidden" : "";
     }
   }
 }
@@ -22,14 +33,17 @@ function toggleSidebar() {
 document.addEventListener("click", function (e) {
   const sidebar = document.getElementById("sidebar");
   const toggle = document.querySelector(".sidebar-toggle");
+  const overlay = document.getElementById("sidebarOverlay");
   if (!sidebar) return;
   if (
     window.innerWidth < 992 &&
     sidebar.classList.contains("open") &&
     !sidebar.contains(e.target) &&
-    e.target !== toggle
+    e.target !== toggle &&
+    e.target !== overlay
   ) {
     sidebar.classList.remove("open");
+    if (overlay) overlay.classList.remove("active");
     document.body.style.overflow = "";
   }
 });
@@ -38,8 +52,10 @@ document.addEventListener("click", function (e) {
 document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") {
     const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
     if (sidebar && sidebar.classList.contains("open")) {
       sidebar.classList.remove("open");
+      if (overlay) overlay.classList.remove("active");
       document.body.style.overflow = "";
     }
   }

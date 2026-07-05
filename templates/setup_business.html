@@ -125,7 +125,7 @@
       <!-- Document template -->
       <div class="form-group">
         <label class="form-label">Document Template</label>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div class="template-selector-grid">
           {% for tpl_id, tpl_label, tpl_desc in templates %}
           <label style="cursor:pointer;border:2px solid {% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}var(--accent){% else %}var(--border){% endif %};
                         border-radius:8px;padding:12px;background:{% if (profile and profile.invoice_template == tpl_id) or (not profile and tpl_id == 'modern') %}var(--accent-2){% else %}#fff{% endif %}">

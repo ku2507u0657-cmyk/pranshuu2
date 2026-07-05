@@ -2872,3 +2872,1051 @@ a:hover { color: var(--accent-hover); }
     display: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FULL RESPONSIVE PASS — Desktop → Mobile
+   Added: comprehensive spacing, overflow, table scrolling,
+   button wrapping, form layout, and grid fixes
+═══════════════════════════════════════════════════════════ */
+
+/* ── Base responsive classes (used by template HTML) ────── */
+.invoice-view-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+}
+
+.template-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.onetime-client-grid {
+  /* base styles set via inline — overrides come in media queries */
+}
+
+.bill-summary-box {
+  /* base styles set via inline — overrides come in media queries */
+}
+
+.client-info-banner {
+  /* base styles set via inline — overrides come in media queries */
+}
+
+/* ── Mobile visibility utilities ───────────────────────── */
+.hide-mobile  { display: revert; }
+.show-mobile  { display: none !important; }
+
+/* ── Table scroll wrapper — applied to all .table-card ── */
+.table-card {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Subtle scroll indicator shadow for tables */
+.table-card {
+  position: relative;
+}
+
+.table-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  background: linear-gradient(to left, rgba(255,255,255,.8), transparent);
+  opacity: 0;
+  transition: opacity .2s;
+}
+
+.table-card:hover::after {
+  opacity: 0;
+}
+
+/* Ensure data-table doesn't collapse below its natural width */
+.data-table {
+  min-width: 600px;
+}
+
+/* ── Topbar improvements ───────────────────────────────── */
+.topbar {
+  min-height: var(--topbar-h);
+  height: auto;
+}
+
+.topbar-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Sidebar mobile overlay ────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 23, 20, .45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99;
+  cursor: pointer;
+  animation: fadeIn .2s ease;
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
+/* ── Form actions — prevent awkward wrapping ────────────── */
+.form-actions {
+  flex-wrap: wrap;
+}
+
+/* ── Page header button group ──────────────────────────── */
+.page-header {
+  align-items: flex-start;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 1280px — Large desktop tweaks
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 1280px) {
+  .roadmap-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 1024px — Tablet landscape
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .invoice-view-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roadmap-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .create-invoice-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-info-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .invoice-info-sidebar > .info-card {
+    flex: 1;
+    min-width: 240px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 992px — Tablet / sidebar collapse
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 992px) {
+  /* Sidebar transforms handled in existing CSS — just add overlay + shadow */
+  .sidebar.open {
+    box-shadow: 8px 0 30px rgba(0,0,0,.25);
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .topbar-title {
+    font-size: .95rem;
+  }
+
+  /* Stack page header */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .page-header > div:last-child,
+  .page-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Reduce page body padding */
+  .page-body {
+    padding: 20px;
+  }
+
+  .flash-container {
+    padding: 12px 20px 0;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 768px — Tablet portrait
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* --- Tables --- */
+  .data-table {
+    min-width: 520px;
+  }
+
+  .data-table th {
+    padding: 10px 12px;
+    font-size: .68rem;
+  }
+
+  .data-table td {
+    padding: 10px 12px;
+    font-size: .82rem;
+  }
+
+  /* --- Search bar stacks --- */
+  .search-bar-form {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-bar-wrap {
+    max-width: 100%;
+  }
+
+  .btn-search {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Filter tabs scroll --- */
+  .filter-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    width: 100%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* --- Forms --- */
+  .form-card {
+    max-width: 100%;
+  }
+
+  .client-form {
+    padding: 20px;
+  }
+
+  .form-card-header {
+    padding: 18px 20px;
+  }
+
+  /* --- Danger zone --- */
+  .danger-zone {
+    max-width: 100%;
+  }
+
+  .danger-zone-body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .danger-zone-body .btn-danger {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Dashboard grid gaps --- */
+  .stats-grid,
+  .kpi-grid {
+    gap: 12px;
+  }
+
+  .dashboard-grid,
+  .chart-row,
+  .lower-grid {
+    gap: 12px;
+  }
+
+  /* --- Modals --- */
+  .modal-backdrop {
+    padding: 16px;
+  }
+
+  .modal-box {
+    padding: 24px 20px 20px;
+    max-width: 100%;
+  }
+
+  /* --- Invoice/Bill view grid (override inline if class wasn't added) --- */
+  [style*="grid-template-columns:1fr 280px"],
+  [style*="grid-template-columns: 1fr 280px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Pagination --- */
+  .pagination-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .pagination-info {
+    text-align: center;
+  }
+
+  .pagination-btns {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  /* --- Customer/product summary --- */
+  .customer-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* --- Template selector (setup business) --- */
+  .template-selector-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Also override inline style directly */
+  [style*="grid-template-columns:repeat(3,1fr)"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* --- One-time client grids --- */
+  .onetime-client-grid,
+  [style*="grid-template-columns: 1fr 1fr"][style*="gap: 16px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Bills create summary box --- */
+  .bill-summary-box,
+  [style*="min-width:300px"] {
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  /* --- Client info banner (client_bills) --- */
+  .client-info-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .client-info-banner > * {
+    margin-left: 0 !important;
+  }
+
+  /* --- Roadmap grid --- */
+  .roadmap-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* --- Selected customer/product card --- */
+  .selected-customer-grid,
+  .selected-product-grid {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+
+  /* --- Detail page grids --- */
+  .customer-detail-grid,
+  .customer-history-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* --- Reports grid --- */
+  .reports-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reports-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 640px — Large phone / small tablet
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* --- Page body --- */
+  .page-body {
+    padding: 14px;
+  }
+
+  .flash-container {
+    padding: 10px 14px 0;
+  }
+
+  /* --- Topbar --- */
+  .topbar {
+    padding: 0 12px;
+    gap: 10px;
+  }
+
+  .topbar-title {
+    font-size: .88rem;
+  }
+
+  .topbar-user {
+    font-size: .72rem;
+    padding: 3px 8px;
+  }
+
+  .env-badge {
+    font-size: .6rem;
+    padding: 2px 7px;
+  }
+
+  /* --- Hide username text, keep icon on very small topbar --- */
+  .topbar-user span:not(i) {
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- Tables --- */
+  .data-table {
+    min-width: 480px;
+  }
+
+  .data-table th {
+    padding: 8px 10px;
+    font-size: .66rem;
+  }
+
+  .data-table td {
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+
+  .row-actions {
+    gap: 4px;
+  }
+
+  .row-btn {
+    width: 28px;
+    height: 28px;
+    font-size: .78rem;
+  }
+
+  /* --- Stat cards --- */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+
+  /* --- KPI cards --- */
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .kpi-card {
+    padding: 16px 18px 14px;
+  }
+
+  .kpi-value {
+    font-size: 1.4rem;
+  }
+
+  .kpi-icon {
+    width: 34px;
+    height: 34px;
+    font-size: .9rem;
+  }
+
+  /* --- Roadmap --- */
+  .roadmap-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .roadmap-item {
+    padding: 12px;
+  }
+
+  /* --- Page header --- */
+  .page-heading {
+    font-size: 1.25rem;
+  }
+
+  .btn-action-primary {
+    padding: 9px 16px;
+    font-size: .82rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Search --- */
+  .search-bar-form {
+    margin-bottom: 12px;
+  }
+
+  /* --- Forms --- */
+  .form-row.two-col {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .client-form {
+    padding: 16px;
+  }
+
+  .form-card-header {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .form-card-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-actions > * {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- Filter tabs --- */
+  .filter-tab {
+    padding: 6px 11px;
+    font-size: .78rem;
+  }
+
+  /* --- Quick actions --- */
+  .quick-actions {
+    padding: 10px;
+  }
+
+  .qa-btn {
+    padding: 9px 10px;
+    font-size: .82rem;
+  }
+
+  /* --- Activity list --- */
+  .activity-row {
+    padding: 6px 4px;
+  }
+
+  /* --- Top clients --- */
+  .top-clients-list {
+    padding: 6px 10px 12px;
+  }
+
+  /* --- Pagination --- */
+  .pg-btn {
+    min-width: 28px;
+    height: 28px;
+    font-size: .78rem;
+    padding: 0 6px;
+  }
+
+  /* --- Breadcrumb --- */
+  .breadcrumb-nav {
+    font-size: .75rem;
+    margin-bottom: 14px;
+  }
+
+  /* --- Template selector --- */
+  .template-selector-grid,
+  [style*="grid-template-columns:repeat(3,1fr)"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Product summary --- */
+  .product-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* --- Product filter --- */
+  .product-filter-form {
+    flex-direction: column;
+  }
+
+  .product-filter-select {
+    width: 100%;
+  }
+
+  /* --- Doughnut chart --- */
+  .doughnut-body {
+    min-height: 160px;
+    padding: 10px 16px;
+  }
+
+  /* --- Chart body --- */
+  .chart-body {
+    padding: 12px 14px 16px;
+  }
+
+  /* --- Detail rows --- */
+  .detail-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  /* --- Lower aside wrap --- */
+  .lower-aside {
+    flex-direction: column;
+  }
+
+  .lower-aside > .dash-panel {
+    min-width: 0;
+  }
+
+  /* --- Reports --- */
+  .reports-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* --- Invoice/Bill action buttons stack --- */
+  .page-actions-row {
+    width: 100%;
+  }
+
+  .page-actions-row > * {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .page-actions-row .btn-action-primary,
+  .page-actions-row .btn-danger {
+    font-size: .78rem;
+    padding: 8px 10px;
+  }
+
+  /* --- Empty state --- */
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-icon {
+    font-size: 2rem;
+  }
+
+  /* --- Status list --- */
+  .status-list {
+    padding: 8px 10px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 480px — Phone
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .page-body {
+    padding: 12px;
+  }
+
+  .topbar {
+    padding: 0 10px;
+    gap: 8px;
+    min-height: 52px;
+  }
+
+  .topbar-title {
+    font-size: .82rem;
+  }
+
+  /* Hide topbar user chip text on phone */
+  .topbar-user {
+    padding: 3px 7px;
+  }
+
+  /* --- Page heading --- */
+  .page-heading {
+    font-size: 1.15rem;
+  }
+
+  .page-sub {
+    font-size: .75rem;
+  }
+
+  /* --- Stat cards single column --- */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 14px;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .stat-card > :last-child {
+    margin-left: auto;
+  }
+
+  /* --- KPI cards --- */
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .kpi-card {
+    padding: 14px 16px 12px;
+  }
+
+  /* --- Roadmap single column --- */
+  .roadmap-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  /* --- Forms tighter --- */
+  .client-form {
+    padding: 14px;
+  }
+
+  .form-card-header {
+    padding: 12px 14px;
+  }
+
+  .form-label {
+    font-size: .7rem;
+  }
+
+  .form-field {
+    padding: 9px 12px 9px 34px;
+    font-size: .85rem;
+  }
+
+  /* --- Modals --- */
+  .modal-backdrop {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal-box {
+    padding: 20px 16px 16px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-btn {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* --- Panel header --- */
+  .panel-header {
+    padding: 14px 14px 12px;
+  }
+
+  .panel-title {
+    font-size: .88rem;
+  }
+
+  /* --- Invoice number badges smaller --- */
+  .inv-number {
+    font-size: .75rem;
+    padding: 2px 6px;
+  }
+
+  /* --- Status pills --- */
+  .status-pill {
+    font-size: .68rem;
+    padding: 2px 8px;
+  }
+
+  /* --- Mark paid button --- */
+  .btn-mark-paid {
+    padding: 4px 10px;
+    font-size: .72rem;
+  }
+
+  /* --- Fee badge --- */
+  .fee-badge {
+    font-size: .78rem;
+    padding: 2px 8px;
+  }
+
+  /* --- Mono numbers --- */
+  .mono-num {
+    font-size: .8rem;
+  }
+
+  /* --- GST code --- */
+  .gst-code {
+    font-size: .72rem;
+    padding: 1px 5px;
+  }
+
+  /* --- Client avatar --- */
+  .client-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: .65rem;
+  }
+
+  /* --- Row actions tighter --- */
+  .row-actions {
+    gap: 3px;
+  }
+
+  .row-btn {
+    width: 26px;
+    height: 26px;
+    font-size: .74rem;
+  }
+
+  /* --- GST preview block --- */
+  .gst-row {
+    padding: 9px 12px;
+    font-size: .82rem;
+  }
+
+  .gst-value {
+    font-size: .82rem;
+  }
+
+  /* --- Info cards --- */
+  .info-card-header {
+    padding: 10px 12px;
+    font-size: .72rem;
+  }
+
+  .info-card-body {
+    padding: 12px;
+    font-size: .78rem;
+  }
+
+  /* --- Selected customer/product cards --- */
+  .selected-customer-grid,
+  .selected-product-grid {
+    grid-template-columns: 1fr;
+    gap: 4px 0;
+  }
+
+  /* --- Metric panel --- */
+  .metric-row {
+    font-size: .8rem;
+    padding: 7px 0;
+  }
+
+  /* --- Dashboard panel spacing --- */
+  .dash-panel {
+    border-radius: var(--radius-sm);
+  }
+
+  /* --- Sidebar brand --- */
+  .sidebar-brand {
+    padding: 18px 16px 16px;
+    font-size: 1.05rem;
+  }
+
+  /* --- Quick actions --- */
+  .qa-btn {
+    font-size: .8rem;
+    padding: 8px;
+  }
+
+  /* --- Activity --- */
+  .activity-icon-wrap {
+    width: 24px;
+    height: 24px;
+    font-size: .72rem;
+  }
+
+  .activity-title {
+    font-size: .76rem;
+  }
+
+  .activity-amount {
+    font-size: .76rem;
+  }
+
+  /* --- TC (top client) --- */
+  .tc-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: .6rem;
+  }
+
+  .tc-name {
+    font-size: .76rem;
+  }
+
+  .tc-amount {
+    font-size: .76rem;
+  }
+
+  /* --- DL (doughnut legend) --- */
+  .doughnut-legend {
+    padding: 10px 14px 12px;
+  }
+
+  .dl-row {
+    font-size: .76rem;
+  }
+
+  /* --- Hide mobile utility --- */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile {
+    display: revert !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BREAKPOINT: 380px — Very small phone (iPhone SE, etc.)
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+  .page-body {
+    padding: 10px;
+  }
+
+  .topbar {
+    padding: 0 8px;
+  }
+
+  .topbar-title {
+    font-size: .78rem;
+  }
+
+  /* Hide env badge on tiny screens */
+  .env-badge {
+    display: none;
+  }
+
+  .page-heading {
+    font-size: 1.05rem;
+  }
+
+  .btn-action-primary {
+    font-size: .78rem;
+    padding: 8px 12px;
+  }
+
+  .form-field {
+    padding: 8px 10px 8px 30px;
+    font-size: .82rem;
+  }
+
+  .data-table th {
+    padding: 7px 8px;
+  }
+
+  .data-table td {
+    padding: 7px 8px;
+    font-size: .78rem;
+  }
+
+  /* Pagination simplified */
+  .pg-btn {
+    min-width: 26px;
+    height: 26px;
+    font-size: .74rem;
+  }
+
+  /* Filter tabs extra small */
+  .filter-tab {
+    padding: 5px 9px;
+    font-size: .74rem;
+    gap: 4px;
+  }
+
+  .filter-count {
+    font-size: .62rem;
+    padding: 1px 4px;
+  }
+
+  /* Client info banner (client_bills) */
+  .client-info-banner {
+    padding: 12px !important;
+  }
+
+  /* Action buttons in view pages */
+  .page-actions-row > * {
+    flex: 1 1 100%;
+  }
+
+  /* Sidebar brand */
+  .sidebar-brand {
+    padding: 14px 12px;
+    font-size: .95rem;
+  }
+
+  .sidebar-nav {
+    padding: 10px 8px;
+  }
+
+  .nav-link-item {
+    padding: 8px 10px;
+    font-size: .82rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Print — hide responsive-only elements
+═══════════════════════════════════════════════════════════ */
+@media print {
+  .sidebar-overlay,
+  .sidebar-toggle,
+  .show-mobile {
+    display: none !important;
+  }
+}
