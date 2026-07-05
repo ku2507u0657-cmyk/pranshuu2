@@ -20,6 +20,44 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 
   {% block head %}{% endblock %}
+
+  <style>
+    /* Sidebar slide-in for mobile */
+    .sidebar.open {
+      animation: slideInSidebar 0.3s ease both;
+    }
+
+    @keyframes slideInSidebar {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(0); }
+    }
+
+    /* Smooth link underlines for sidebar nav items */
+    .nav-link-item {
+      position: relative;
+    }
+
+    .nav-link-item::after {
+      content: '';
+      position: absolute;
+      bottom: 4px;
+      left: 12px;
+      right: 12px;
+      height: 1.5px;
+      background: rgba(255,255,255,.15);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .2s ease;
+    }
+
+    .nav-link-item:hover::after {
+      transform: scaleX(1);
+    }
+
+    .nav-link-item.active::after {
+      display: none;
+    }
+  </style>
 </head>
 <body>
 

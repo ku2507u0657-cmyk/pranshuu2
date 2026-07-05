@@ -4,10 +4,31 @@
 
 .home-body {
   background: #F7F6F2;
-  font-family: var(--font-body, 'DM Sans', sans-serif);
+  font-family: 'DM Sans', sans-serif;
   margin: 0;
   color: #1A1714;
   overflow-x: hidden;
+}
+
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px #DCFCE7; }
+  50%       { box-shadow: 0 0 0 6px #DCFCE7; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* ── Navbar ──────────────────────────────────────────────── */
@@ -171,13 +192,16 @@
   font-size: .95rem;
   letter-spacing: -.01em;
   text-decoration: none;
-  transition: background .15s, transform .15s;
+  transition: all .3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-primary-hero:hover {
-  background: #333;
+  background: #1D4ED8;
   color: #fff;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(29,78,216,.3);
 }
 
 .btn-ghost-hero {
@@ -322,12 +346,34 @@
   border: 1px solid #E4E0D8;
   border-radius: 16px;
   padding: 28px 24px;
-  transition: box-shadow .2s, transform .2s;
+  transition: all .3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1D4ED8, #3B82F6);
+  opacity: 0;
+  transition: opacity .3s ease;
 }
 
 .feature-card:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,.08);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.1);
+  transform: translateY(-4px);
+  border-color: #D0CBBF;
+}
+
+.feature-card:hover::before {
+  opacity: 1;
+}
+
+.feature-card:hover .feature-icon {
+  background: linear-gradient(135deg, #1D4ED8, #3B82F6);
+  transform: scale(1.05);
 }
 
 .feature-icon {
@@ -338,6 +384,7 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 1.1rem;
   margin-bottom: 16px;
+  transition: all .3s ease;
 }
 
 .feature-card h3 {
