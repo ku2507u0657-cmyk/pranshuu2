@@ -14,6 +14,7 @@ POST /auth/login  →  validate credentials  →  login_user()
 """
 
 import logging
+import re
 import secrets
 
 from flask import (
@@ -21,12 +22,15 @@ from flask import (
     request, flash, current_app, session,
 )
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models import Admin
 
 logger  = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -68,6 +72,67 @@ def _is_email_allowed(email: str) -> bool:
     return email.lower() in allowed
 
 
+def _is_safe_next_url(next_page: str) -> bool:
+    return bool(next_page and next_page.startswith("/") and not next_page.startswith("//"))
+
+
+def _login_next_url() -> str:
+    next_page = request.form.get("next") or request.args.get("next") or ""
+    return next_page if _is_safe_next_url(next_page) else ""
+
+
+def _redirect_after_login():
+    next_page = _login_next_url()
+    if next_page:
+        return redirect(next_page)
+    return redirect(url_for("main.dashboard"))
+
+
+def _render_login(form_mode="signin", form_values=None, google_enabled=None):
+    if google_enabled is None:
+        google_enabled = bool(current_app.config.get("GOOGLE_CLIENT_ID"))
+
+    return render_template(
+        "auth/login.html",
+        app_name=current_app.config.get("APP_NAME", "InvoiceFlow"),
+        google_enabled=google_enabled,
+        form_mode=form_mode,
+        form_values=form_values or {},
+        next_url=_login_next_url(),
+    )
+
+
+def _find_admin_by_email(email: str):
+    return Admin.query.filter(func.lower(Admin.email) == email.lower()).first()
+
+
+def _find_admin_by_login(identifier: str):
+    normalized = identifier.strip().lower()
+    if not normalized:
+        return None
+
+    admin = _find_admin_by_email(normalized)
+    if admin:
+        return admin
+
+    return Admin.query.filter(func.lower(Admin.username) == normalized).first()
+
+
+def _unique_username_from_email(email: str) -> str:
+    base = email.split("@", 1)[0].lower()
+    base = re.sub(r"[^a-z0-9_.-]+", "-", base).strip("._-") or "user"
+    base = base[:60]
+    username = base
+    suffix = 1
+
+    while Admin.query.filter(func.lower(Admin.username) == username.lower()).first():
+        ending = f"-{suffix}"
+        username = f"{base[:80 - len(ending)]}{ending}"
+        suffix += 1
+
+    return username
+
+
 def _find_or_create_admin(google_id: str, email: str,
                            display_name: str, avatar_url: str) -> Admin:
     """
@@ -84,10 +149,10 @@ def _find_or_create_admin(google_id: str, email: str,
         return admin
 
     # 2. Match by email — upgrade an existing password-only account
-    admin = Admin.query.filter_by(email=email).first()
+    admin = _find_admin_by_email(email)
     if not admin:
         # Also try matching by username == email (common pattern)
-        admin = Admin.query.filter_by(username=email).first()
+        admin = Admin.query.filter(func.lower(Admin.username) == email.lower()).first()
 
     if admin:
         admin.google_id    = google_id
@@ -99,12 +164,7 @@ def _find_or_create_admin(google_id: str, email: str,
         return admin
 
     # 3. Brand-new admin — create from Google profile
-    username = email.split("@")[0]
-    # Ensure username is unique
-    base, n = username, 1
-    while Admin.query.filter_by(username=username).first():
-        username = f"{base}{n}"
-        n += 1
+    username = _unique_username_from_email(email)
 
     admin = Admin(
         username     = username,
@@ -119,50 +179,101 @@ def _find_or_create_admin(google_id: str, email: str,
     return admin
 
 
+def _sign_in_with_password(google_enabled):
+    identifier = request.form.get("login", "").strip()
+    password = request.form.get("password", "")
+    remember = bool(request.form.get("remember"))
+    form_values = {"login": identifier}
+
+    if not identifier or not password:
+        flash("Email or username and password are required.", "danger")
+        return _render_login("signin", form_values, google_enabled)
+
+    admin = _find_admin_by_login(identifier)
+    if admin is None:
+        flash("No account was found for those details.", "danger")
+        return _render_login("signin", form_values, google_enabled)
+
+    if not admin.has_password:
+        flash("That account uses Google sign in. Continue with Google instead.", "warning")
+        return _render_login("signin", form_values, google_enabled)
+
+    if not admin.check_password(password):
+        flash("Invalid password. Please try again.", "danger")
+        return _render_login("signin", form_values, google_enabled)
+
+    login_user(admin, remember=remember)
+    flash(f"Welcome back, {admin.display_name or admin.username}!", "success")
+    return _redirect_after_login()
+
+
+def _create_password_account(google_enabled):
+    display_name = request.form.get("display_name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    form_values = {"display_name": display_name, "email": email}
+
+    if not display_name:
+        flash("Please enter your name.", "danger")
+        return _render_login("signup", form_values, google_enabled)
+
+    if not email or not EMAIL_RE.match(email):
+        flash("Please enter a valid email address.", "danger")
+        return _render_login("signup", form_values, google_enabled)
+
+    if len(password) < 8:
+        flash("Use at least 8 characters for your password.", "danger")
+        return _render_login("signup", form_values, google_enabled)
+
+    if password != confirm_password:
+        flash("Passwords do not match.", "danger")
+        return _render_login("signup", form_values, google_enabled)
+
+    if _find_admin_by_login(email):
+        flash("An account already exists for that email. Sign in instead.", "warning")
+        return _render_login("signin", {"login": email}, google_enabled)
+
+    username = _unique_username_from_email(email)
+    admin = Admin(username=username, email=email, display_name=display_name)
+    admin.set_password(password)
+    db.session.add(admin)
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash("An account already exists for those details. Sign in instead.", "warning")
+        return _render_login("signin", {"login": email}, google_enabled)
+
+    login_user(admin, remember=True)
+    flash(f"Your account is ready. Welcome, {display_name}!", "success")
+    return _redirect_after_login()
+
+
 # ═══════════════════════════════════════════════════════════════
-#  Password login (unchanged, kept as fallback)
+#  Password login and account creation
 # ═══════════════════════════════════════════════════════════════
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Username + password login form."""
+    """Password sign in and sign up form."""
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
     google_enabled = bool(current_app.config.get("GOOGLE_CLIENT_ID"))
 
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        remember = bool(request.form.get("remember"))
+        form_mode = request.form.get("form_mode", "signin")
+        if form_mode == "signup":
+            return _create_password_account(google_enabled)
+        return _sign_in_with_password(google_enabled)
 
-        if not username or not password:
-            flash("Username and password are required.", "danger")
-            return render_template("auth/login.html",
-                                   app_name=current_app.config.get("APP_NAME"),
-                                   google_enabled=google_enabled)
+    form_mode = request.args.get("mode", "signin")
+    if form_mode not in {"signin", "signup"}:
+        form_mode = "signin"
 
-        admin = Admin.query.filter_by(username=username).first()
-
-        if admin is None or not admin.check_password(password):
-            flash("Invalid username or password.", "danger")
-            return render_template("auth/login.html",
-                                   app_name=current_app.config.get("APP_NAME"),
-                                   google_enabled=google_enabled)
-
-        login_user(admin, remember=remember)
-        flash(f"Welcome back, {admin.display_name or admin.username}!", "success")
-
-        next_page = request.args.get("next")
-        if next_page and next_page.startswith("/"):
-            return redirect(next_page)
-        return redirect(url_for("main.dashboard"))
-
-    return render_template(
-        "auth/login.html",
-        app_name       = current_app.config.get("APP_NAME", "InvoiceFlow"),
-        google_enabled = google_enabled,
-    )
+    return _render_login(form_mode, google_enabled=google_enabled)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -179,6 +290,10 @@ def google_login():
     if not client:
         flash("Google login is not configured on this server.", "warning")
         return redirect(url_for("auth.login"))
+
+    next_page = request.args.get("next", "")
+    if _is_safe_next_url(next_page):
+        session["next_url"] = next_page
 
     # Generate a CSRF-protection state token
     state = secrets.token_urlsafe(32)

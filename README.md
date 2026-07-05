@@ -5,7 +5,7 @@ coaching classes, gyms, and other service-based small businesses in India.
 
 ## Features
 
-- **Admin Authentication** — Secure login with hashed passwords
+- **Admin Authentication** — Google OAuth plus database-backed password accounts
 - **Client Management** — Add, edit, remove clients with monthly fee tracking
 - **Invoice System** — Auto-numbered invoices with 18% GST calculation
 - **UPI QR Code** — Embedded in PDF and invoice view for instant payment
@@ -46,7 +46,7 @@ cp .env.example .env
 python app.py
 ```
 
-Open http://localhost:5000 — login with `admin` / `changeme123`
+Open http://localhost:5000, choose **New user**, and create your first account.
 
 ---
 
@@ -114,7 +114,6 @@ invoiceflow/
 2. Go to [render.com](https://render.com) → **New** → **Blueprint**
 3. Connect your repo — Render reads `render.yaml` automatically
 4. Add your secret env vars in the Render dashboard:
-   - `ADMIN_PASSWORD`
    - `MAIL_USERNAME`, `MAIL_PASSWORD` (if using email)
    - `UPI_ID`, `COMPANY_NAME`, etc.
 5. Deploy — Render provisions a free PostgreSQL database automatically
@@ -166,14 +165,13 @@ Enable with `SCHEDULER_ENABLED=True` in `.env`.
 
 ---
 
-## Default Credentials
+## Account Creation
 
-| Field | Value |
-|-------|-------|
-| Username | `admin` |
-| Password | `changeme123` |
+Create the first account from the login page with **New user**. Password
+accounts are saved in the configured database with hashed passwords.
 
-**Change immediately** via `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `.env`.
+If you need to pre-create one account during deployment, set both
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment before the first run.
 
 ---
 

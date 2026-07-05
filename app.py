@@ -66,14 +66,26 @@ def create_app(config_class=None):
 
 def _seed_admin(app):
     from models import Admin
-    username = os.environ.get("ADMIN_USERNAME", "admin")
-    password = os.environ.get("ADMIN_PASSWORD", "changeme123")
-    if not Admin.query.filter_by(username=username).first():
-        admin = Admin(username=username)
+    username = os.environ.get("ADMIN_USERNAME", "").strip()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+
+    if not username or not password:
+        return
+
+    existing_admin = Admin.query.filter_by(username=username).first()
+    if not existing_admin and "@" in username:
+        existing_admin = Admin.query.filter_by(email=username.lower()).first()
+
+    if not existing_admin:
+        admin = Admin(
+            username=username,
+            email=username.lower() if "@" in username else None,
+            display_name=username,
+        )
         admin.set_password(password)
         db.session.add(admin)
         db.session.commit()
-        app.logger.info("Seeded default admin: '%s'", username)
+        app.logger.info("Seeded configured admin: '%s'", username)
 
 
 def _ensure_compatible_schema(app):
@@ -85,6 +97,14 @@ def _ensure_compatible_schema(app):
     fields keep old invoice and bill records compatible with the current models.
     """
     table_columns = {
+        "admins": {
+            "google_id": "VARCHAR(128)",
+            "email": "VARCHAR(255)",
+            "display_name": "VARCHAR(200)",
+            "avatar_url": "VARCHAR(500)",
+            "created_at": "TIMESTAMP",
+            "updated_at": "TIMESTAMP",
+        },
         "clients": {
             "business_name": "VARCHAR(200)",
             "city": "VARCHAR(100)",
