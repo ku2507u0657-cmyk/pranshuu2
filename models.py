@@ -5,12 +5,15 @@ Multi-user: every Client, Invoice, Bill is scoped to an Admin owner.
 
 from datetime import datetime, date, timezone
 from decimal import Decimal, ROUND_HALF_UP
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash
 from extensions import db
 
 
 GST_RATE = Decimal("0.18")
+password_hasher = PasswordHasher()
 
 
 class TimestampMixin:
@@ -39,16 +42,25 @@ class Admin(UserMixin, TimestampMixin, db.Model):
     avatar_url   = db.Column(db.String(500), nullable=True)
 
     def set_password(self, plaintext):
-        self.password_hash = generate_password_hash(plaintext)
+        self.password_hash = password_hasher.hash(plaintext)
 
     def check_password(self, plaintext):
         if not self.password_hash:
             return False
+        if self.password_hash.startswith("$argon2"):
+            try:
+                return password_hasher.verify(self.password_hash, plaintext)
+            except (InvalidHashError, VerificationError, VerifyMismatchError):
+                return False
         return check_password_hash(self.password_hash, plaintext)
 
     @property
     def has_password(self):
         return bool(self.password_hash)
+
+    @property
+    def has_legacy_password_hash(self):
+        return bool(self.password_hash and not self.password_hash.startswith("$argon2"))
 
     @property
     def login_method(self):

@@ -42,6 +42,7 @@
           action="{{ url_for('invoices.mark_paid', invoice_id=invoice.id, next=url_for('invoices.view_invoice', invoice_id=invoice.id)) }}"
           style="display:inline"
           onsubmit="return confirm('Mark {{ invoice.invoice_number }} as paid?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="btn-action-primary" style="background:var(--green)">
         <i class="bi bi-check-lg"></i> Mark Paid
       </button>
@@ -51,6 +52,7 @@
           action="{{ url_for('invoices.resend_email', invoice_id=invoice.id) }}"
           style="display:inline"
           onsubmit="return confirm('Re-send invoice email?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="btn-cancel">
         <i class="bi bi-envelope"></i> Resend Email
       </button>
@@ -59,6 +61,7 @@
           action="{{ url_for('invoices.delete_invoice', invoice_id=invoice.id) }}"
           style="display:inline"
           onsubmit="return confirm('Permanently delete invoice {{ invoice.invoice_number }}? This cannot be undone.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <button type="submit" class="btn-danger" style="padding:10px 16px;font-size:.85rem">
         <i class="bi bi-trash3"></i> Delete
       </button>

@@ -28,6 +28,7 @@
     </div>
 
     <form method="POST" id="profileForm" class="client-form" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
       <!-- Logo upload -->
       <div class="form-group" style="margin-bottom: 24px;">

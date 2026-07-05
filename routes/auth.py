@@ -27,8 +27,9 @@ import requests
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
-from extensions import db
+from extensions import db, limiter
 from models import Admin
+from utils.security import is_safe_redirect_path
 
 logger  = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -89,7 +90,7 @@ def _is_email_allowed(email: str) -> bool:
 
 
 def _is_safe_next_url(next_page: str) -> bool:
-    return bool(next_page and next_page.startswith("/") and not next_page.startswith("//"))
+    return is_safe_redirect_path(next_page)
 
 
 def _login_next_url() -> str:
@@ -218,6 +219,10 @@ def _sign_in_with_password(google_enabled):
         flash("Invalid password. Please try again.", "danger")
         return _render_login("signin", form_values, google_enabled)
 
+    if admin.has_legacy_password_hash:
+        admin.set_password(password)
+        db.session.commit()
+
     login_user(admin, remember=remember)
     flash(f"Welcome back, {admin.display_name or admin.username}!", "success")
     return _redirect_after_login()
@@ -272,6 +277,7 @@ def _create_password_account(google_enabled):
 # ═══════════════════════════════════════════════════════════════
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     """Password sign in and sign up form."""
     if current_user.is_authenticated:
@@ -297,6 +303,7 @@ def login():
 # ═══════════════════════════════════════════════════════════════
 
 @auth_bp.route("/google/login")
+@limiter.limit("20 per minute")
 def google_login():
     """Redirect the browser to Google's OAuth consent screen."""
     if current_user.is_authenticated:
@@ -333,6 +340,7 @@ def google_login():
 # ═══════════════════════════════════════════════════════════════
 
 @auth_bp.route("/google/callback")
+@limiter.limit("20 per minute")
 def google_callback():
     """
     Google redirects here after the user grants (or denies) access.
@@ -429,7 +437,7 @@ def google_callback():
     flash(f"Welcome, {admin.display_name or admin.username}! Signed in with Google.", "success")
 
     next_page = request.args.get("next") or session.pop("next_url", None)
-    if next_page and next_page.startswith("/"):
+    if _is_safe_next_url(next_page):
         return redirect(next_page)
     return redirect(url_for("main.dashboard"))
 
@@ -438,7 +446,7 @@ def google_callback():
 #  Logout
 # ═══════════════════════════════════════════════════════════════
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     """Clear session and redirect to login."""

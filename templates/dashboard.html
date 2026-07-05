@@ -181,6 +181,7 @@
                     action="{{ url_for('invoices.mark_paid', invoice_id=inv.id, next=url_for('main.dashboard')) }}"
                     style="display:inline"
                     onsubmit="return confirm('Mark {{ inv.invoice_number }} as paid?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <button type="submit" class="btn-mark-paid">
                   <i class="bi bi-check-lg"></i> Mark Paid
                 </button>
@@ -239,8 +240,9 @@
                 {{ bill.due_date.strftime('%d %b %Y') }}
               {% endif %}
             </td>
-            <td class="text-center">
+          <td class="text-center">
               <form method="POST" action="{{ url_for('bills.mark_paid', bill_id=bill.id, next=url_for('main.dashboard')) }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <button type="submit" class="btn-mark-paid" style="background: rgba(220, 38, 38, 0.1); color: #dc2626;">
                   <i class="bi bi-check-lg"></i> Mark Paid
                 </button>

@@ -122,6 +122,7 @@
                   action="{{ url_for('invoices.mark_paid', invoice_id=inv.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Mark {{ inv.invoice_number }} as paid?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <button type="submit" class="row-btn edit" title="Mark as paid">
                 <i class="bi bi-check-lg"></i>
               </button>
@@ -131,6 +132,7 @@
                   action="{{ url_for('invoices.delete_invoice', invoice_id=inv.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Permanently delete ' + '{{ inv.invoice_number }}' + '? This cannot be undone.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <button type="submit" class="row-btn delete" title="Delete">
                 <i class="bi bi-trash3"></i>
               </button>

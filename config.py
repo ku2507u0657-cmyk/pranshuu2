@@ -4,6 +4,7 @@ Supports SQLite (development) and PostgreSQL (production).
 """
 
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,7 +12,7 @@ load_dotenv()
 
 class BaseConfig:
     # ── Flask ──────────────────────────────────────────────────
-    SECRET_KEY   = os.environ.get("SECRET_KEY", "dev-fallback-secret-key-change-in-production")
+    SECRET_KEY   = os.environ.get("SECRET_KEY")
     APP_NAME     = os.environ.get("APP_NAME",     "InvoiceFlow")
     COMPANY_NAME = os.environ.get("COMPANY_NAME", "Your Company")
     COMPANY_ADDRESS = os.environ.get("COMPANY_ADDRESS", "")
@@ -19,6 +20,13 @@ class BaseConfig:
     COMPANY_EMAIL   = os.environ.get("COMPANY_EMAIL",   "")
     COMPANY_GSTIN   = os.environ.get("COMPANY_GSTIN",   "")
     COMPANY_LOGO    = os.environ.get("COMPANY_LOGO",    "")   # path to logo file
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_DURATION = timedelta(days=int(os.environ.get("REMEMBER_COOKIE_DAYS", 30)))
+    WTF_CSRF_TIME_LIMIT = int(os.environ.get("WTF_CSRF_TIME_LIMIT", 3600))
+    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
 
     # ── Database ───────────────────────────────────────────────
     # Set DATABASE_URL to postgresql://... in .env for production.
@@ -41,6 +49,8 @@ class BaseConfig:
         os.path.join(os.path.dirname(__file__), "uploads"),
     )
     MAX_LOGO_SIZE_MB = int(os.environ.get("MAX_LOGO_SIZE_MB", 2))
+    MAX_LOGO_PIXELS = int(os.environ.get("MAX_LOGO_PIXELS", 4_000_000))
+    MAX_CONTENT_LENGTH = MAX_LOGO_SIZE_MB * 1024 * 1024
 
     # ── UPI Payment ────────────────────────────────────────────
     UPI_ID          = os.environ.get("UPI_ID",          "")   # e.g. yourname@upi
@@ -87,22 +97,30 @@ class BaseConfig:
 class DevelopmentConfig(BaseConfig):
     DEBUG             = True
     TESTING           = False
+    SECRET_KEY        = os.environ.get("SECRET_KEY", "dev-only-secret-change-me")
     MAIL_ENABLED      = os.environ.get("MAIL_ENABLED",      "False").lower() == "true"
     SCHEDULER_ENABLED = os.environ.get("SCHEDULER_ENABLED", "False").lower() == "true"
+    FORCE_HTTPS       = False
 
 
 class TestingConfig(BaseConfig):
     DEBUG             = True
     TESTING           = True
+    SECRET_KEY        = "test-secret-key"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED  = False
     MAIL_ENABLED      = False
     SCHEDULER_ENABLED = False
+    FORCE_HTTPS       = False
 
 
 class ProductionConfig(BaseConfig):
     DEBUG   = False
     TESTING = False
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    PREFERRED_URL_SCHEME = "https"
+    FORCE_HTTPS = os.environ.get("FORCE_HTTPS", "True").lower() == "true"
 
 
 config_map = {
@@ -112,6 +130,20 @@ config_map = {
 }
 
 
+def _is_weak_secret(value):
+    normalized = (value or "").strip().lower()
+    return (
+        not normalized
+        or len(normalized) < 32
+        or normalized.startswith("change-this")
+        or normalized.startswith("dev-only")
+        or "secret-key" in normalized
+    )
+
+
 def get_config():
     env = os.environ.get("FLASK_ENV", "development").lower()
-    return config_map.get(env, DevelopmentConfig)
+    config_cls = config_map.get(env, DevelopmentConfig)
+    if config_cls is ProductionConfig and _is_weak_secret(config_cls.SECRET_KEY):
+        raise RuntimeError("A strong SECRET_KEY must be set when FLASK_ENV=production")
+    return config_cls

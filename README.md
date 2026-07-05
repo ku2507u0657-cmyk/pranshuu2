@@ -6,6 +6,7 @@ coaching classes, gyms, and other service-based small businesses in India.
 ## Features
 
 - **Admin Authentication** — Google OAuth plus database-backed password accounts
+- **Security Hardening** — Argon2 password hashes, CSRF protection, login rate limits, secure cookies
 - **Client Management** — Add, edit, remove clients with monthly fee tracking
 - **Invoice System** — Auto-numbered invoices with 18% GST calculation
 - **UPI QR Code** — Embedded in PDF and invoice view for instant payment
@@ -37,7 +38,7 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# Edit .env with your values (at minimum set SECRET_KEY)
+# Edit .env with your values (production must set SECRET_KEY)
 ```
 
 ### 3. Run
@@ -114,6 +115,7 @@ invoiceflow/
 2. Go to [render.com](https://render.com) → **New** → **Blueprint**
 3. Connect your repo — Render reads `render.yaml` automatically
 4. Add your secret env vars in the Render dashboard:
+   - `SECRET_KEY` (Render can generate this from `render.yaml`)
    - `MAIL_USERNAME`, `MAIL_PASSWORD` (if using email)
    - `UPI_ID`, `COMPANY_NAME`, etc.
 5. Deploy — Render provisions a free PostgreSQL database automatically
@@ -125,6 +127,9 @@ invoiceflow/
 3. Start command: `gunicorn app:app --workers 1 --bind 0.0.0.0:$PORT --timeout 120`
 4. Add a **PostgreSQL** database and copy its `DATABASE_URL`
 5. Set all required env vars from `.env.example`
+
+For production, keep `FORCE_HTTPS=True`. If you run more than one worker or
+instance, set `RATELIMIT_STORAGE_URI` to Redis so brute-force limits are shared.
 
 ---
 
@@ -189,7 +194,7 @@ Enable with `SCHEDULER_ENABLED=True` in `.env`.
 ## Account Creation
 
 Create the first account from the login page with **New user**. Password
-accounts are saved in the configured database with hashed passwords.
+accounts are saved in the configured database with Argon2 password hashes.
 
 If you need to pre-create one account during deployment, set both
 `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the environment before the first run.
@@ -200,10 +205,10 @@ If you need to pre-create one account during deployment, set both
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Python 3.11, Flask 3.0 |
+| Backend | Python 3.11, Flask 3.1 |
 | ORM | SQLAlchemy 2.0 + Flask-Migrate |
 | Database | SQLite (dev) / PostgreSQL (prod) |
-| Auth | Flask-Login + Werkzeug hashing |
+| Auth | Flask-Login + Argon2 + CSRF protection |
 | PDF | ReportLab 4.2 |
 | QR Code | qrcode + Pillow |
 | Email | smtplib (stdlib) |

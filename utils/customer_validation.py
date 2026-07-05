@@ -43,8 +43,8 @@ def validate_email_address(value):
         if EMAIL_FALLBACK_RE.match(email):
             return True, email, ""
         return False, email, "Email address format is invalid."
-    except EmailNotValidError as exc:
-        return False, email, str(exc)
+    except EmailNotValidError:
+        return False, email, "Email address format is invalid."
 
 
 def validate_gstin(value):

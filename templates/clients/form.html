@@ -36,6 +36,7 @@
   <form method="POST"
         action="{{ url_for('clients.edit_client', client_id=client.id) if is_edit else url_for('clients.add_client') }}"
         novalidate class="client-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
     <div class="form-row two-col">
       <div class="form-group">
@@ -183,6 +184,7 @@
     <div class="modal-actions">
       <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
       <form id="deleteForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button type="submit" class="modal-btn confirm-delete">Remove</button>
       </form>
     </div>

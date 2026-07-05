@@ -226,8 +226,9 @@ def _brevo_api_send(subject, from_name, from_address, recipient_email, recipient
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         response.raise_for_status() # Raise exception for 4XX/5XX errors
     except RequestException as exc:
-        err_detail = exc.response.text if exc.response else str(exc)
-        raise EmailError(f"Brevo API Error: {err_detail}") from exc
+        status = exc.response.status_code if exc.response else "network"
+        logger.warning("Brevo API request failed with status: %s", status)
+        raise EmailError("Email provider rejected the request.") from exc
 
 
 # ─────────────────────────────────────────────────────────────

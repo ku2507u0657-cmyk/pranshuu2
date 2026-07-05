@@ -95,6 +95,7 @@
             <form method="POST" action="{{ url_for('bills.mark_paid', bill_id=bill.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Mark {{ bill.bill_number }} as paid?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <button type="submit" class="row-btn edit" title="Mark paid">
                 <i class="bi bi-check-lg"></i>
               </button>

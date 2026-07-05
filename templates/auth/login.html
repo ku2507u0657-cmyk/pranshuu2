@@ -441,6 +441,7 @@
     </nav>
 
     <form id="signinForm" class="auth-form" method="POST" action="{{ url_for('auth.login') }}" novalidate {{ 'hidden' if active_mode != 'signin' else '' }}>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="form_mode" value="signin" />
       <input type="hidden" name="next" value="{{ next_url }}" />
 
@@ -479,6 +480,7 @@
     </form>
 
     <form id="signupForm" class="auth-form" method="POST" action="{{ url_for('auth.login') }}" novalidate {{ 'hidden' if active_mode != 'signup' else '' }}>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
       <input type="hidden" name="form_mode" value="signup" />
       <input type="hidden" name="next" value="{{ next_url }}" />
 

@@ -57,6 +57,7 @@
 </nav>
 
 <form method="POST" id="billForm" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
   <div class="form-card" style="margin-bottom:16px">
     <div class="form-card-header">

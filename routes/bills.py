@@ -20,6 +20,7 @@ from utils.customer_validation import (
     validate_email_address,
     validate_phone,
 )
+from utils.security import safe_redirect_target
 
 logger = logging.getLogger(__name__)
 bills_bp = Blueprint("bills", __name__, url_prefix="/bills")
@@ -392,7 +393,10 @@ def mark_paid(bill_id):
         bill.mark_paid()
         db.session.commit()
         flash(f"{bill.bill_number} marked as paid.", "success")
-    next_page = request.args.get("next") or url_for("bills.list_bills")
+    next_page = safe_redirect_target(
+        request.args.get("next"),
+        url_for("bills.list_bills"),
+    )
     return redirect(next_page)
 
 
@@ -424,7 +428,8 @@ def download_pdf(bill_id):
         bill.pdf_path = rel_path
         db.session.commit()
     except Exception as exc:
-        flash(f"Could not generate PDF: {exc}", "danger")
+        logger.exception("Bill PDF generation failed for %s: %s", bill.bill_number, exc)
+        flash("Could not generate the PDF. Please try again.", "danger")
         return redirect(url_for("bills.view_bill", bill_id=bill_id))
 
     return send_file(bill.pdf_path, mimetype="application/pdf",
@@ -448,6 +453,8 @@ def calc_row():
         rate = float(request.args.get("rate", 0))
         gst  = float(request.args.get("gst",  0))
     except ValueError:
+        return jsonify({"error": "invalid"}), 400
+    if qty <= 0 or rate < 0 or gst < 0 or gst > 100:
         return jsonify({"error": "invalid"}), 400
 
     from decimal import Decimal, ROUND_HALF_UP
@@ -473,4 +480,4 @@ def _dispatch_bill_email(bill, app, force=False):
                 flash(f"Bill emailed to {recipient}.", "info")
     except Exception as exc:
         logger.exception("Bill email failed for %s: %s", bill.bill_number, exc)
-        flash(f"Bill saved but email failed: {exc}", "warning")
+        flash("Bill saved, but the email could not be sent. Check mail settings and try again.", "warning")

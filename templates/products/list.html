@@ -220,6 +220,7 @@
     <div class="modal-actions">
       <button onclick="closeModal()" class="modal-btn cancel">Cancel</button>
       <form id="deleteForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <button type="submit" class="modal-btn confirm-delete">Delete</button>
       </form>
     </div>

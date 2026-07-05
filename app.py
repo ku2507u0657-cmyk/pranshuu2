@@ -3,11 +3,13 @@ app.py — InvoiceFlow Flask Application Factory
 Multi-user: every Client/Invoice/Bill is scoped to its owner Admin.
 """
 import os
-from flask import Flask
+from flask import Flask, flash, jsonify, redirect, request, url_for
+from flask_login import current_user
+from flask_wtf.csrf import CSRFError
 from sqlalchemy import inspect, text
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import get_config
-from extensions import db, migrate, login_manager
+from extensions import csrf, db, limiter, login_manager, migrate
 
 
 def create_app(config_class=None):
@@ -25,6 +27,8 @@ def create_app(config_class=None):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
 
     from routes.main     import main_bp
     from routes.auth     import auth_bp
@@ -48,6 +52,36 @@ def create_app(config_class=None):
     @login_manager.user_loader
     def load_user(user_id):
         return db.session.get(Admin, int(user_id))
+
+    @app.before_request
+    def enforce_https():
+        if not app.config.get("FORCE_HTTPS"):
+            return None
+        if request.is_secure or request.host.startswith(("localhost", "127.0.0.1")):
+            return None
+        return redirect(request.url.replace("http://", "https://", 1), code=301)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if not app.config.get("DEBUG") and request.is_secure:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
+        return response
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(error):
+        app.logger.warning("Blocked request with invalid CSRF token: %s", error.description)
+        if request.accept_mimetypes.best == "application/json":
+            return jsonify({"error": "security_check_failed"}), 400
+        flash("Security check failed. Please submit the form again.", "danger")
+        if current_user.is_authenticated:
+            return redirect(url_for("main.dashboard"))
+        return redirect(url_for("auth.login"))
 
     with app.app_context():
         db.create_all()

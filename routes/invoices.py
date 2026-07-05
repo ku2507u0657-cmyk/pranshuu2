@@ -20,6 +20,7 @@ from utils.customer_validation import (
     validate_email_address,
     validate_phone,
 )
+from utils.security import safe_redirect_target
 
 logger = logging.getLogger(__name__)
 invoices_bp = Blueprint("invoices", __name__, url_prefix="/invoices")
@@ -359,7 +360,10 @@ def mark_paid(invoice_id):
         invoice.mark_paid()
         db.session.commit()
         flash(f"{invoice.invoice_number} marked as paid.", "success")
-    next_page = request.args.get("next") or url_for("invoices.list_invoices")
+    next_page = safe_redirect_target(
+        request.args.get("next"),
+        url_for("invoices.list_invoices"),
+    )
     return redirect(next_page)
 
 
@@ -392,7 +396,8 @@ def download_pdf(invoice_id):
         invoice.pdf_path = rel_path
         db.session.commit()
     except Exception as exc:
-        flash(f"Could not generate PDF: {exc}", "danger")
+        logger.exception("PDF generation failed for invoice %s: %s", invoice.invoice_number, exc)
+        flash("Could not generate the PDF. Please try again.", "danger")
         return redirect(url_for("invoices.view_invoice", invoice_id=invoice_id))
 
     return send_file(invoice.pdf_path, mimetype="application/pdf",
@@ -446,9 +451,10 @@ def whatsapp_share(invoice_id):
         )
         return jsonify(payload)
     except WhatsAppShareError as exc:
+        logger.warning("WhatsApp share failed for invoice %s: %s", invoice_id, exc)
         return jsonify({
             "success": False,
-            "error": str(exc),
+            "error": "Could not prepare the invoice PDF for sharing.",
             "error_code": "pdf_failed",
         }), 500
     except Exception as exc:
@@ -477,4 +483,4 @@ def _dispatch_email(invoice, app, force=False):
             flash(f"Invoice email sent to {recipient}.", "info")
     except Exception as exc:
         logger.exception("Email failed for %s: %s", invoice.invoice_number, exc)
-        flash(f"Invoice saved but email failed: {exc}", "warning")
+        flash("Invoice saved, but the email could not be sent. Check mail settings and try again.", "warning")

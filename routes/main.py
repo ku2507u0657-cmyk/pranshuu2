@@ -7,15 +7,17 @@ from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, send_from_directory, flash
 from flask_login import login_required, current_user
+from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.utils import secure_filename
 from models import BusinessProfile
-from extensions import db
+from extensions import db, limiter
 from utils.invoice_branding import INVOICE_TEMPLATES, DEFAULT_TERMS, logo_url
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
+@limiter.limit("120 per minute")
 def index():
     return render_template("index.html",
                            app_name=current_app.config.get("APP_NAME", "InvoiceFlow"))
@@ -178,12 +180,20 @@ def dashboard():
     # Top Clients (By Total Money In)
     top_clients_raw = []
     for c in Client.query.filter_by(owner_id=uid).all():
-        inv_sum = db.session.query(db.func.sum(Invoice.total)).filter(Invoice.client_id == c.id, Invoice.transaction_type == 'in').scalar() or 0
-        bill_sum = db.session.query(db.func.sum(Bill.grand_total)).filter(Bill.client_id == c.id, Bill.transaction_type == 'in').scalar() or 0
+        inv_sum = db.session.query(db.func.sum(Invoice.total)).filter(
+            Invoice.owner_id == uid,
+            Invoice.client_id == c.id,
+            Invoice.transaction_type == 'in',
+        ).scalar() or 0
+        bill_sum = db.session.query(db.func.sum(Bill.grand_total)).filter(
+            Bill.owner_id == uid,
+            Bill.client_id == c.id,
+            Bill.transaction_type == 'in',
+        ).scalar() or 0
         total_b = float(inv_sum) + float(bill_sum)
         
-        inv_cnt = Invoice.query.filter_by(client_id=c.id, transaction_type='in').count()
-        bill_cnt = Bill.query.filter_by(client_id=c.id, transaction_type='in').count()
+        inv_cnt = Invoice.query.filter_by(owner_id=uid, client_id=c.id, transaction_type='in').count()
+        bill_cnt = Bill.query.filter_by(owner_id=uid, client_id=c.id, transaction_type='in').count()
         
         if total_b > 0:
             top_clients_raw.append({"client": c, "total_billed": total_b, "invoice_count": inv_cnt + bill_cnt})
@@ -218,15 +228,21 @@ def dashboard():
 
 
 @main_bp.route("/health")
+@limiter.limit("60 per minute")
 def health():
     from extensions import db
     try:
         db.session.execute(db.text("SELECT 1"))
         db_status = "ok"
     except Exception as exc:
-        db_status = f"error: {exc}"
-    return {"status": "ok", "database": db_status,
-            "app": current_app.config.get("APP_NAME")}
+        current_app.logger.exception("Health database check failed: %s", exc)
+        db_status = "error"
+    status_code = 200 if db_status == "ok" else 503
+    return {
+        "status": "ok" if db_status == "ok" else "degraded",
+        "database": db_status,
+        "app": current_app.config.get("APP_NAME"),
+    }, status_code
 
 
 ALLOWED_LOGO_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
@@ -253,7 +269,24 @@ def _save_logo_upload(profile, file_storage, app):
     logos_dir = os.path.join(upload_root, "logos")
     os.makedirs(logos_dir, exist_ok=True)
 
-    stored_name = f"owner_{profile.owner_id}.{ext}"
+    try:
+        image = Image.open(file_storage.stream)
+        image.verify()
+    except (UnidentifiedImageError, OSError):
+        file_storage.stream.seek(0)
+        return "Logo must be a valid image file."
+
+    file_storage.stream.seek(0)
+    image = Image.open(file_storage.stream)
+    image = ImageOps.exif_transpose(image)
+    max_pixels = app.config.get("MAX_LOGO_PIXELS", 4_000_000)
+    if image.width * image.height > max_pixels:
+        return "Logo image dimensions are too large."
+
+    if image.mode not in {"RGB", "RGBA"}:
+        image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+
+    stored_name = f"owner_{profile.owner_id}.png"
     rel_path = os.path.join("logos", stored_name)
     full_path = os.path.join(upload_root, rel_path)
 
@@ -265,7 +298,7 @@ def _save_logo_upload(profile, file_storage, app):
             except OSError:
                 pass
 
-    file_storage.save(full_path)
+    image.save(full_path, format="PNG", optimize=True)
     profile.logo_path = rel_path
     return None
 

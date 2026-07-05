@@ -103,6 +103,7 @@
                   action="{{ url_for('bills.mark_paid', bill_id=bill.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Mark {{ bill.bill_number }} as paid?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <button type="submit" class="row-btn edit" title="Mark paid">
                 <i class="bi bi-check-lg"></i>
               </button>
@@ -112,6 +113,7 @@
                   action="{{ url_for('bills.delete_bill', bill_id=bill.id) }}"
                   style="display:inline"
                   onsubmit="return confirm('Permanently delete this bill? Cannot be undone.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
               <button type="submit" class="row-btn delete" title="Delete">
                 <i class="bi bi-trash3"></i>
               </button>

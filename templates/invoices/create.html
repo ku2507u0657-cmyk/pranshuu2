@@ -72,6 +72,7 @@
 
     <form method="POST" action="{{ url_for('invoices.create_invoice') }}"
           novalidate class="client-form" id="invoiceForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
       <div class="form-row">
         <div class="form-group full-width">
