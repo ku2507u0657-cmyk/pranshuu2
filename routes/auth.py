@@ -16,12 +16,14 @@ POST /auth/login  →  validate credentials  →  login_user()
 import logging
 import re
 import secrets
+from urllib.parse import urlencode
 
 from flask import (
     Blueprint, render_template, redirect, url_for,
     request, flash, current_app, session,
 )
 from flask_login import login_user, logout_user, login_required, current_user
+import requests
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
@@ -31,32 +33,46 @@ from models import Admin
 logger  = logging.getLogger(__name__)
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
 
 # ═══════════════════════════════════════════════════════════════
 #  Helpers
 # ═══════════════════════════════════════════════════════════════
 
-def _get_google_client():
-    """
-    Return a configured Authlib OAuth registry client for Google.
-    Returns None if GOOGLE_CLIENT_ID is not set.
-    """
-    client_id     = current_app.config.get("GOOGLE_CLIENT_ID",     "")
-    client_secret = current_app.config.get("GOOGLE_CLIENT_SECRET", "")
+def _is_google_placeholder(value: str) -> bool:
+    normalized = (value or "").strip().lower()
+    return (
+        not normalized
+        or normalized.startswith("your-client-id")
+        or normalized.startswith("your-client-secret")
+        or normalized in {"change-me", "changeme", "google-client-id", "google-client-secret"}
+    )
 
-    if not client_id or not client_secret:
+
+def _has_google_credentials() -> bool:
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID", "")
+    client_secret = current_app.config.get("GOOGLE_CLIENT_SECRET", "")
+    return not _is_google_placeholder(client_id) and not _is_google_placeholder(client_secret)
+
+
+def _get_google_oauth_config():
+    """Return Google OAuth settings, or None if credentials are missing."""
+    if not _has_google_credentials():
         return None
 
-    from authlib.integrations.requests_client import OAuth2Session
-
-    client = OAuth2Session(
-        client_id     = client_id,
-        client_secret = client_secret,
-        scope         = "openid email profile",
-        redirect_uri  = url_for("auth.google_callback", _external=True),
+    redirect_uri = (
+        current_app.config.get("GOOGLE_REDIRECT_URI", "").strip()
+        or url_for("auth.google_callback", _external=True)
     )
-    return client
+
+    return {
+        "client_id": current_app.config.get("GOOGLE_CLIENT_ID", "").strip(),
+        "client_secret": current_app.config.get("GOOGLE_CLIENT_SECRET", "").strip(),
+        "redirect_uri": redirect_uri,
+    }
 
 
 def _is_email_allowed(email: str) -> bool:
@@ -90,7 +106,7 @@ def _redirect_after_login():
 
 def _render_login(form_mode="signin", form_values=None, google_enabled=None):
     if google_enabled is None:
-        google_enabled = bool(current_app.config.get("GOOGLE_CLIENT_ID"))
+        google_enabled = _has_google_credentials()
 
     return render_template(
         "auth/login.html",
@@ -261,7 +277,7 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
-    google_enabled = bool(current_app.config.get("GOOGLE_CLIENT_ID"))
+    google_enabled = _has_google_credentials()
 
     if request.method == "POST":
         form_mode = request.form.get("form_mode", "signin")
@@ -286,9 +302,9 @@ def google_login():
     if current_user.is_authenticated:
         return redirect(url_for("main.dashboard"))
 
-    client = _get_google_client()
-    if not client:
-        flash("Google login is not configured on this server.", "warning")
+    google_config = _get_google_oauth_config()
+    if not google_config:
+        flash("Google login needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.", "warning")
         return redirect(url_for("auth.login"))
 
     next_page = request.args.get("next", "")
@@ -299,12 +315,16 @@ def google_login():
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
 
-    authorization_url, _ = client.create_authorization_url(
-        "https://accounts.google.com/o/oauth2/v2/auth",
-        state             = state,
-        access_type       = "online",
-        prompt            = "select_account",   # always show account picker
-    )
+    authorization_params = {
+        "client_id": google_config["client_id"],
+        "redirect_uri": google_config["redirect_uri"],
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "online",
+        "prompt": "select_account",
+    }
+    authorization_url = f"{GOOGLE_AUTH_URL}?{urlencode(authorization_params)}"
     return redirect(authorization_url)
 
 
@@ -332,30 +352,49 @@ def google_callback():
         flash("Security check failed. Please try logging in again.", "danger")
         return redirect(url_for("auth.login"))
 
-    client = _get_google_client()
-    if not client:
+    google_config = _get_google_oauth_config()
+    if not google_config:
         flash("Google login is not configured.", "warning")
         return redirect(url_for("auth.login"))
 
     # ── Exchange code for token ────────────────────────────────
     try:
-        token = client.fetch_token(
-            "https://oauth2.googleapis.com/token",
-            authorization_response = request.url,
-            code                   = request.args.get("code"),
+        token_resp = requests.post(
+            GOOGLE_TOKEN_URL,
+            data={
+                "client_id": google_config["client_id"],
+                "client_secret": google_config["client_secret"],
+                "code": request.args.get("code"),
+                "grant_type": "authorization_code",
+                "redirect_uri": google_config["redirect_uri"],
+            },
+            timeout=10,
         )
-    except Exception as exc:
+        token_resp.raise_for_status()
+        token = token_resp.json()
+    except requests.RequestException as exc:
         logger.exception("Token exchange failed: %s", exc)
-        flash("Google login failed — could not exchange token. Please try again.", "danger")
+        flash("Google login failed - could not exchange token. Please try again.", "danger")
+        return redirect(url_for("auth.login"))
+
+    access_token = token.get("access_token")
+    if not access_token:
+        logger.error("Google token response did not include access_token")
+        flash("Google login failed - no access token returned.", "danger")
         return redirect(url_for("auth.login"))
 
     # ── Fetch Google user profile ──────────────────────────────
     try:
-        resp    = client.get("https://www.googleapis.com/oauth2/v3/userinfo")
+        resp = requests.get(
+            GOOGLE_USERINFO_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
         profile = resp.json()
-    except Exception as exc:
+    except requests.RequestException as exc:
         logger.exception("Could not fetch Google profile: %s", exc)
-        flash("Google login failed — could not fetch profile.", "danger")
+        flash("Google login failed - could not fetch profile.", "danger")
         return redirect(url_for("auth.login"))
 
     google_id    = profile.get("sub")          # unique, stable Google user ID

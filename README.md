@@ -142,6 +142,27 @@ invoiceflow/
 
 ---
 
+## Google OAuth Login
+
+Create an OAuth 2.0 Web application in Google Cloud and add this authorized
+redirect URI for local development:
+
+```
+http://localhost:5000/auth/google/callback
+```
+
+For deployment, add your live callback URL, for example:
+
+```
+https://yourdomain.com/auth/google/callback
+```
+
+Then set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env` or your host's
+environment settings. If your host needs an exact callback override, set
+`GOOGLE_REDIRECT_URI` to the same URL registered in Google Cloud.
+
+---
+
 ## UPI QR Code Setup
 
 ```

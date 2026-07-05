@@ -5,6 +5,7 @@ Multi-user: every Client/Invoice/Bill is scoped to its owner Admin.
 import os
 from flask import Flask
 from sqlalchemy import inspect, text
+from werkzeug.middleware.proxy_fix import ProxyFix
 from config import get_config
 from extensions import db, migrate, login_manager
 
@@ -12,6 +13,7 @@ from extensions import db, migrate, login_manager
 def create_app(config_class=None):
     app = Flask(__name__)
     app.config.from_object(config_class or get_config())
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     os.makedirs(app.config.get("PDF_FOLDER", "invoices"), exist_ok=True)
     os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)

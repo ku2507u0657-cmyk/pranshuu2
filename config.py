@@ -66,6 +66,7 @@ class BaseConfig:
     #   https://yourdomain.com/auth/google/callback (prod)
     GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID",     "")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_REDIRECT_URI  = os.environ.get("GOOGLE_REDIRECT_URI",  "")
 
     # Comma-separated list of allowed Google email addresses.
     # Leave empty to allow ANY Google account (not recommended for production).
