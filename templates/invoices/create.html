@@ -343,18 +343,18 @@
       <div class="gst-preview-block">
         <div class="gst-row">
           <span class="gst-label">Base Amount</span>
-          <span class="gst-value" id="previewBase">₹0.00</span>
+          <span class="gst-value" id="previewBase">₹ 0.00</span>
         </div>
         <div class="gst-row highlight">
           <span class="gst-label">
             <i class="bi bi-percent"></i>
             GST (<span id="previewGstRate">18</span>%)
           </span>
-          <span class="gst-value accent" id="previewGst">₹0.00</span>
+          <span class="gst-value accent" id="previewGst">₹ 0.00</span>
         </div>
         <div class="gst-row total-row">
           <span class="gst-label">Total Payable</span>
-          <span class="gst-value total" id="previewTotal">₹0.00</span>
+          <span class="gst-value total" id="previewTotal">₹ 0.00</span>
         </div>
       </div>
 
@@ -491,7 +491,7 @@ function highlightSlab() {
 
 // ── Preview ────────────────────────────────────────────────────
 function fmt(n) {
-  return '\u20b9' + parseFloat(n||0).toLocaleString('en-IN',
+  return '\u20b9 ' + parseFloat(n||0).toLocaleString('en-IN',
     {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
