@@ -3,7 +3,8 @@ app.py — InvoiceFlow Flask Application Factory
 Multi-user: every Client/Invoice/Bill is scoped to its owner Admin.
 """
 import os
-from flask import Flask, flash, jsonify, redirect, request, url_for
+import secrets
+from flask import Flask, flash, g, jsonify, redirect, request, url_for
 from flask_login import current_user
 from flask_wtf.csrf import CSRFError
 from sqlalchemy import inspect, text
@@ -53,6 +54,16 @@ def create_app(config_class=None):
     def load_user(user_id):
         return db.session.get(Admin, int(user_id))
 
+    # ── CSP nonce: generate a unique nonce per request ──────
+    @app.before_request
+    def generate_csp_nonce():
+        g.csp_nonce = secrets.token_urlsafe(32)
+
+    @app.context_processor
+    def inject_csp_nonce():
+        """Make csp_nonce available in all Jinja2 templates."""
+        return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
     @app.before_request
     def enforce_https():
         if not app.config.get("FORCE_HTTPS"):
@@ -71,6 +82,33 @@ def create_app(config_class=None):
                 "Strict-Transport-Security",
                 "max-age=31536000; includeSubDomains",
             )
+
+        # ── Content-Security-Policy ────────────────────────────
+        nonce = getattr(g, "csp_nonce", "")
+        csp_directives = [
+            "default-src 'self'",
+            f"script-src 'self' 'nonce-{nonce}' 'unsafe-inline'"
+            " https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
+            f"style-src 'self' 'nonce-{nonce}' 'unsafe-inline'"
+            " https://cdn.jsdelivr.net https://fonts.googleapis.com",
+            "img-src 'self' data: https:",
+            "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com",
+            "connect-src 'self'",
+            "frame-src 'none'",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]
+        response.headers.setdefault(
+            "Content-Security-Policy", "; ".join(csp_directives)
+        )
+
+        # ── Permissions-Policy ─────────────────────────────────
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+        )
+
         return response
 
     @app.errorhandler(CSRFError)

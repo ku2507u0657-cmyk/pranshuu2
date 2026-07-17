@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<style>
+<style nonce="{{ csp_nonce }}">
 /* Sleek Segmented Control for Money In / Out and Client Type */
 .transaction-toggle {
   display: inline-flex;
@@ -405,7 +405,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // ── Client Type Toggle Logic ───────────────────────────────────
 function toggleClientMode() {
   const mode = document.querySelector('input[name="client_type"]:checked').value;

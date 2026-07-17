@@ -4,8 +4,8 @@
 {% block page_title %}Reports{% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous"></script>
+<style nonce="{{ csp_nonce }}">
   .reports-stack {
     display: flex;
     flex-direction: column;
@@ -413,7 +413,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const chartLabels = {{ chart.labels | tojson }};
 const chartMoneyIn = {{ chart.money_in | tojson }};
 const chartMoneyOut = {{ chart.money_out | tojson }};

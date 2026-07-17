@@ -195,7 +195,7 @@
 
 {% block scripts %}
 {% if is_edit %}
-<script>
+<script nonce="{{ csp_nonce }}">
 function confirmDelete(name, url) {
   document.getElementById('deleteProductName').textContent = name;
   document.getElementById('deleteForm').action = url;
